@@ -1,0 +1,126 @@
+
+Found: 1
+Active: 95
+Errored: 0
+Avoid: 12
+Deadended: 0
+
+============================ Magic & filinfo.fsize ============================
+================================================================================
+  Header:  57616c6b484e47000000000000000000000000000000000000000000bffdd11c
+  Magic:   b'WalkHNG\x00'
+  Body:    0000000000000000000000000000000000000000
+  End:     bffdd11c
+
+  filinfo.fsize = 4294909952 Bytes
+
+================================= Constraints =================================
+================================================================================
+  Total constraints: 14
+
+  [ 1] <Bool 0xffff2000 >= size_658_32>
+  [ 2] <Bool magic_sig_659_256[255:248] == 87>
+  [ 3] <Bool magic_sig_659_256[247:240] == 97>
+  [ 4] <Bool magic_sig_659_256[239:232] == 108>
+  [ 5] <Bool magic_sig_659_256[231:224] == 107>
+  [ 6] <Bool magic_sig_659_256[223:216] == 72>
+  [ 7] <Bool magic_sig_659_256[215:208] == 78>
+  [ 8] <Bool magic_sig_659_256[207:200] == 71>
+  [ 9] <Bool magic_sig_659_256[31:24] == 191>
+  [10] <Bool magic_sig_659_256[23:16] == 253>
+  [11] <Bool magic_sig_659_256[15:8] == 209>
+  [12] <Bool magic_sig_659_256[7:0] == 28>
+  [13] <Bool magic_sig_659_256[191:184] == 0>
+  [14] <Bool magic_sig_659_256[127:120] == 0>
+
+================================== Call Stack ==================================
+
+0 | boot_main -> walk_update_flash, returning to boot_main
+1 | 0x0 -> 0x0, returning to 0x0
+
+================================ Execution Path ================================
+
+boot_reset_handler
+├── boot_generic_setup
+├── __libc_init_array
+│   ├── 0x8009695
+│   ├── 0x80001ad
+├── boot_main
+│   ├── HAL_Init
+│   ├── HAL_PWREx_EnableBatteryCharging
+│   ├── HAL_PWR_EnableBkUpAccess
+│   ├── walk_clocks_setup
+│   ├── walk_gpio_setup
+│   ├── walk_gpio_setup_2
+│   ├── walk_gpio_setup_3
+│   ├── walk_uart_setup
+│   ├── printf
+│   ├── printf
+│   ├── printf
+│   ├── walk_buzzer_setup
+│   ├── printf
+│   ├── walk_tft_setup
+│   ├── walk_check_usb_connection
+│   ├── idk
+│   ├── check_sd_card
+│   ├── printf
+│   ├── f_open
+│   ├── printf
+│   ├── walk_check_update_file
+│   │   ├── memset
+│   │   ├── f_stat
+│   │   ├── f_read
+│   │   ├── f_close
+│   │   │   ├── f_read
+│   │   │   │   ├── validate
+│   │   ├── mod_strcmp
+│   │   ├── strcpy
+│   │   ├── strcat
+│   │   ├── strcat
+│   │   ├── printf
+│   │   ├── printf
+│   │   ├── printf
+│   ├── f_open
+│   ├── FUN_08007f84
+│   ├── walk_start_oc_buzzer
+│   ├── walk_set_font_scale
+│   ├── scr_something_3
+│   ├── draw_to_scr
+│   ├── FUN_0800110e
+│   ├── scr_something_3
+│   ├── draw_to_scr
+│   ├── draw_to_scr
+│   ├── scr_something_3
+│   ├── draw_to_scr
+│   ├── scr_something_3
+│   ├── draw_to_scr
+│   ├── printf
+│   ├── walk_set_font_scale
+│   ├── draw_to_scr
+│   ├── draw_to_scr
+│   ├── idk
+│   ├── walk_set_font_scale
+│   ├── draw_to_scr
+│   ├── walk_preparing_flash
+│   │   ├── HAL_FLASH_Unlock
+│   ├── HAL_Delay
+│   ├── walk_do_flash_programming
+│   ├── walk_update_flash
+
+Total jumps (jumpkinds): 2794
+
+================================= Printf Logs =================================
+================================================================================
+  [ 1] **** WalkHNG Boot v 1.06 ****
+  [ 2] --> Debug usart ready...
+  [ 3] --> Start Buzzer driver
+  [ 4] --> Start TFT driver
+  [ 5] Check file WalkHNG-APP.bin
+  [ 6] Found upload file WalkHNG-APP.bin
+  [ 7] -> Load File: WalkHNG-APP.bin
+  [ 8] -> size: 4294909952 bytes
+  [ 9] -> Code:  v
+  [10] --> Update ready, Left skip, right go update
+
+================================================================================
+

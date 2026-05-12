@@ -1,0 +1,217 @@
+[FLASH] Scrittura a 0x800e000, Valore: <BV32 magic_sig_659_256[231:224] .. magic_sig_659_256[239:232] .. magic_sig_659_256[247:240] .. magic_sig_659_256[255:248]>
+[FLASH] Scrittura a 0x800e000, Valore: <BV32 magic_sig_659_256[231:224] .. magic_sig_659_256[239:232] .. magic_sig_659_256[247:240] .. magic_sig_659_256[255:248]>
+
+Found: 1
+Active: 191
+Errored: 0
+Deadended: 0
+
+==================================== Magic ====================================
+================================================================================
+  Header:  57616c6b484e47000000000000000000000000000000000000000000bffdd11c
+  Magic:   b'WalkHNG\x00'
+  Body:    0000000000000000000000000000000000000000
+  End:     bffdd11c
+
+================================== File Size ==================================
+================================================================================
+65537 Bytes
+Min: 8192 Bytes
+Max: 991231 Bytes
+
+================================= Constraints =================================
+================================================================================
+Constraints: 16
+  <Bool 0x2000 <= size_658_32>
+  <Bool !(0xf2000 <= size_658_32)>
+  <Bool magic_sig_659_256[247:240] == 97>
+  <Bool magic_sig_659_256[255:248] == 87>
+  <Bool magic_sig_659_256[239:232] == 108>
+  <Bool magic_sig_659_256[231:224] == 107>
+  <Bool magic_sig_659_256[223:216] == 72>
+  <Bool magic_sig_659_256[215:208] == 78>
+  <Bool magic_sig_659_256[207:200] == 71>
+  <Bool magic_sig_659_256[31:24] == 191>
+  <Bool magic_sig_659_256[23:16] == 253>
+  <Bool magic_sig_659_256[15:8] == 209>
+  <Bool magic_sig_659_256[7:0] == 28>
+  <Bool magic_sig_659_256[191:184] == 0>
+  <Bool magic_sig_659_256[127:120] == 0>
+  <Bool size_658_32 <= 0xf1fff>
+
+==================================== Stack ====================================
+================================================================================
+0 | walk_do_flash_programming -> HAL_FLASH_Program, returning to walk_do_flash_programming
+1 | walk_program_flash -> walk_do_flash_programming, returning to walk_program_flash
+2 | walk_update_flash -> walk_program_flash, returning to walk_update_flash
+3 | boot_main -> walk_update_flash, returning to boot_main
+4 | 0x0 -> 0x0, returning to 0x0
+
+===================================== Path =====================================
+
+boot_reset_handler
+├── boot_generic_setup
+├── __libc_init_array
+│   ├── 0x8009695
+│   ├── 0x80001ad
+├── boot_main
+│   ├── HAL_Init
+│   ├── HAL_PWREx_EnableBatteryCharging
+│   ├── HAL_PWR_EnableBkUpAccess
+│   ├── walk_clocks_setup
+│   ├── walk_gpio_setup
+│   ├── walk_gpio_setup_2
+│   ├── walk_gpio_setup_3
+│   ├── walk_uart_setup
+│   ├── printf
+│   ├── printf
+│   ├── printf
+│   ├── walk_buzzer_setup
+│   ├── printf
+│   ├── walk_tft_setup
+│   ├── walk_check_usb_connection
+│   ├── idk
+│   ├── check_sd_card
+│   ├── printf
+│   ├── f_open
+│   ├── printf
+│   ├── walk_check_update_file
+│   │   ├── memset
+│   │   ├── f_stat
+│   │   ├── f_read
+│   │   ├── f_close
+│   │   │   ├── 0x80077bb
+│   │   │   │   ├── validate
+│   │   ├── mod_strcmp
+│   │   ├── strcpy
+│   │   ├── strcat
+│   │   ├── strcat
+│   │   ├── printf
+│   │   ├── printf
+│   │   ├── printf
+│   ├── f_open
+│   ├── FUN_08007f84
+│   ├── walk_start_oc_buzzer
+│   ├── walk_set_font_scale
+│   ├── scr_something_3
+│   ├── draw_to_scr
+│   ├── FUN_0800110e
+│   ├── scr_something_3
+│   ├── draw_to_scr
+│   ├── draw_to_scr
+│   ├── scr_something_3
+│   ├── draw_to_scr
+│   ├── scr_something_3
+│   ├── draw_to_scr
+│   ├── printf
+│   ├── walk_set_font_scale
+│   ├── draw_to_scr
+│   ├── draw_to_scr
+│   ├── idk
+│   ├── walk_set_font_scale
+│   ├── draw_to_scr
+│   ├── walk_preparing_flash
+│   ├── HAL_Delay
+│   ├── walk_do_flash_programming
+│   ├── walk_update_flash
+│   │   ├── memset
+│   │   ├── 0x8007b2d
+│   │   ├── f_stat
+│   │   ├── walk_set_font_scale
+│   │   ├── draw_to_scr
+│   │   ├── walk_start_flash_erase
+│   │   ├── 0x80010c7
+│   │   │   ├── 0x80019c1
+│   │   │   ├── 0x80019c1
+│   │   │   ├── 0x800196d
+│   │   ├── walk_program_flash
+│   │   │   ├── walk_set_font_scale
+│   │   │   ├── draw_to_scr
+│   │   │   ├── f_read
+│   │   │   ├── printf
+│   │   │   ├── printf
+│   │   │   ├── printf
+│   │   │   ├── printf
+│   │   │   ├── printf
+│   │   │   ├── printf
+│   │   │   ├── printf
+│   │   │   ├── printf
+│   │   │   ├── printf
+│   │   │   ├── printf
+│   │   │   ├── printf
+│   │   │   ├── printf
+│   │   │   ├── printf
+│   │   │   ├── printf
+│   │   │   ├── printf
+│   │   │   ├── printf
+│   │   │   ├── printf
+│   │   │   ├── printf
+│   │   │   ├── printf
+│   │   │   ├── printf
+│   │   │   ├── printf
+│   │   │   ├── printf
+│   │   │   ├── printf
+│   │   │   ├── printf
+│   │   │   ├── printf
+│   │   │   ├── printf
+│   │   │   ├── printf
+│   │   │   ├── printf
+│   │   │   ├── printf
+│   │   │   ├── printf
+│   │   │   ├── printf
+│   │   │   ├── printf
+│   │   │   ├── printf
+│   │   │   ├── printf
+│   │   │   ├── walk_do_flash_programming
+│   │   │   │   ├── HAL_FLASH_Unlock
+│   │   │   │   ├── HAL_FLASH_Program
+│   │   │   │   │   ├── FLASH_WaitForLastOperation
+
+Total jumps (jumpkinds): 2938
+
+==================================== Printf ====================================
+
+  [0] **** WalkHNG Boot v 1.06 ****
+  [1] --> Debug usart ready...
+  [2] --> Start Buzzer driver
+  [3] --> Start TFT driver
+  [4] Check file WalkHNG-APP.bin
+  [5] Found upload file WalkHNG-APP.bin
+  [6] -> Load File: WalkHNG-APP.bin
+  [7] -> size: 0 bytes
+  [8] -> Code:  v
+  [9] --> Update ready, Left skip, right go update
+  [10] >0x800e000-
+  [11] W,
+  [12] a,
+  [13] l,
+  [14] k,
+  [15] H,
+  [16] N,
+  [17] G,
+  [18] 0x0,
+  [19] 0x0,
+  [20] 0x0,
+  [21] 0x0,
+  [22] 0x0,
+  [23] 0x0,
+  [24] 0x0,
+  [25] 0x0,
+  [26] 0x0,
+  [27] 0x0,
+  [28] 0x0,
+  [29] 0x0,
+  [30] 0x0,
+  [31] 0x0,
+  [32] 0x0,
+  [33] 0x0,
+  [34] 0x0,
+  [35] 0x0,
+  [36] 0x0,
+  [37] 0x0,
+  [38] 0x0,
+  [39] 0xbf,
+  [40] 0xfd,
+  [41] 0xd1,
+  [42] 0x1c,
+  [43] >256

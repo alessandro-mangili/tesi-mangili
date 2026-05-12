@@ -1,0 +1,187 @@
+// ============================================================================
+// Unknown symbols (data or misidentified code)
+// ============================================================================
+
+void unknown_2(void) {}
+void unknown_7(void) {}
+void unknown_83(void) {}
+void unknown_100(void) {}
+void unknown_163(void) {}
+void unknown_423(void) {}
+void unknown_801f(void) {}
+void unknown_1043(void) {}
+void unknown_1f00(void) {}
+void unknown_2023(void) {}
+void unknown_4023(void) {}
+void unknown_400b(void) {}
+void unknown_20000(void) {}
+void unknown_61860(void) {}
+void unknown_e0(void) {}
+void unknown_fc(void) {}
+void unknown_f0ff(void) {}
+void unknown_ffff(void) {}
+void unknown_44facc4(void) {}
+void unknown_606d2cc(void) {}
+void unknown_6032470(void) {}
+void unknown_6057764(void) {}
+void unknown_60fd7e0(void) {}
+void unknown_611cc8c(void) {}
+void unknown_626d990(void) {}
+void unknown_62ca8ac(void) {}
+void unknown_632199a(void) {}
+void unknown_64ec702(void) {}
+void unknown_64fde90(void) {}
+void unknown_650f914(void) {}
+void unknown_656d06a(void) {}
+void unknown_6619dee(void) {}
+void unknown_66f1702(void) {}
+void unknown_68b1a56(void) {}
+void unknown_69dc370(void) {}
+void unknown_69dc3a8(void) {}
+void unknown_6a5c376(void) {}
+void unknown_6a9c37a(void) {}
+void unknown_6b3ce00(void) {}
+void unknown_6e79a80(void) {}
+void unknown_6f9d97a(void) {}
+void unknown_701a16c(void) {}
+void unknown_701b21e(void) {}
+void unknown_706cdce(void) {}
+void unknown_712a6f8(void) {}
+void unknown_727dad0(void) {}
+void unknown_7317932(void) {}
+void unknown_74f155e(void) {}
+void unknown_7613278(void) {}
+void unknown_762df20(void) {}
+void unknown_77dbf26(void) {}
+void unknown_783fc7c(void) {}
+void unknown_785d9be(void) {}
+void unknown_7861684(void) {}
+void unknown_798404e(void) {}
+void unknown_7a8d782(void) {}
+void unknown_7b06922(void) {}
+void unknown_7b8d6ba(void) {}
+void unknown_7dbf212(void) {}
+void unknown_805caac(void) {}
+void unknown_805cc00(void) {}
+void unknown_805ccda(void) {}
+void unknown_805ce66(void) {}
+void unknown_805d2e8(void) {}
+void unknown_805d428(void) {}
+void unknown_805d526(void) {}
+void unknown_805dce8(void) {}
+void unknown_805e152(void) {}
+void unknown_805e6d4(void) {}
+void unknown_805e76c(void) {}
+void unknown_807dee4(void) {}
+void unknown_807f6b6(void) {}
+void unknown_80bb512(void) {}
+void unknown_80be3a4(void) {}
+void unknown_80d84de(void) {}
+void unknown_80d9a4e(void) {}
+void unknown_80dd9c8(void) {}
+void unknown_8118ce2(void) {}
+void unknown_812043c(void) {}
+void unknown_812c4ec(void) {}
+void unknown_8132dca(void) {}
+void unknown_813e586(void) {}
+void unknown_813effa(void) {}
+void unknown_813f952(void) {}
+void unknown_8173250(void) {}
+void unknown_81cf2b8(void) {}
+void unknown_8231160(void) {}
+void unknown_83647e0(void) {}
+void unknown_843ff8c(void) {}
+void unknown_843ffac(void) {}
+void unknown_845db56(void) {}
+void unknown_8476cbc(void) {}
+void unknown_8477668(void) {}
+void unknown_847d4d0(void) {}
+void unknown_847d57a(void) {}
+void unknown_847d610(void) {}
+void unknown_847da6a(void) {}
+void unknown_847dbb6(void) {}
+void unknown_847e3de(void) {}
+void unknown_847e7b4(void) {}
+void unknown_84b7da0(void) {}
+void unknown_84bc7cc(void) {}
+void unknown_84bc918(void) {}
+void unknown_84bd468(void) {}
+void unknown_84bd512(void) {}
+void unknown_84bd5a8(void) {}
+void unknown_84bdb14(void) {}
+void unknown_84bdb4e(void) {}
+void unknown_84be090(void) {}
+void unknown_84be450(void) {}
+void unknown_84be470(void) {}
+void unknown_84be476(void) {}
+void unknown_84be842(void) {}
+void unknown_84bea42(void) {}
+void unknown_84beb22(void) {}
+void unknown_84bef9a(void) {}
+void unknown_84da442(void) {}
+void unknown_851e664(void) {}
+void unknown_851e838(void) {}
+void unknown_851eb5e(void) {}
+void unknown_851ed3a(void) {}
+void unknown_851f752(void) {}
+void unknown_851fcf4(void) {}
+void unknown_852097a(void) {}
+void unknown_8520b5e(void) {}
+void unknown_8520d3a(void) {}
+void unknown_852297a(void) {}
+void unknown_8522ab0(void) {}
+void unknown_852f2f4(void) {}
+void unknown_853cf22(void) {}
+void unknown_853d1b2(void) {}
+void unknown_853d612(void) {}
+void unknown_853d9b0(void) {}
+void unknown_853d9ca(void) {}
+void unknown_853db10(void) {}
+void unknown_853db2a(void) {}
+void unknown_853dc2e(void) {}
+void unknown_853dfa0(void) {}
+void unknown_853e700(void) {}
+void unknown_853e70c(void) {}
+void unknown_853e95c(void) {}
+void unknown_853ea9e(void) {}
+void unknown_853eaba(void) {}
+void unknown_853eb58(void) {}
+void unknown_853eb5c(void) {}
+void unknown_853ebf4(void) {}
+void unknown_853ec16(void) {}
+void unknown_853ec30(void) {}
+void unknown_853ed02(void) {}
+void unknown_853efea(void) {}
+void unknown_871ced4(void) {}
+void unknown_87ed40e(void) {}
+void unknown_87ed730(void) {}
+void unknown_8858cc0(void) {}
+void unknown_8bdad6c(void) {}
+void unknown_8ad8cac(void) {}
+void unknown_8d98c96(void) {}
+void unknown_8f98c86(void) {}
+void unknown_8fdcd16(void) {}
+void unknown_9057e22(void) {}
+void unknown_9099d06(void) {}
+void unknown_915d9a4(void) {}
+void unknown_9218006(void) {}
+void unknown_9644016(void) {}
+void unknown_965fc28(void) {}
+void unknown_9a9d9c4(void) {}
+void unknown_9d57fe8(void) {}
+void unknown_9ec6928(void) {}
+void unknown_9fcb1d6(void) {}
+
+// ============================================================================
+// Global variables
+// ============================================================================
+
+int global_var_8028bec = 0;
+
+// ============================================================================
+// Standard library functions
+// ============================================================================
+
+float copysignf(float x, float y) {
+    return y < 0 ? -x : x;
+}

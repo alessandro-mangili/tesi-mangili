@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  analysis:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tesi
+    hostname: tesi-firmware  
+    volumes:
+      - ./Firmware:/workspace/Firmware:ro
+      - ./angr:/workspace/angr
+      - ./retdec_klee:/workspace/retdec_klee
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+    command: tail -f /dev/null
