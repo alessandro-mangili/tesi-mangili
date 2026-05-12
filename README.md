@@ -103,7 +103,7 @@ docker-compose down --rmi all
 docker system prune -a -f
 ```
 
-## 📋 Verifica Strumenti
+## Verifica Strumenti
 
 ```bash
 # Dentro il container
