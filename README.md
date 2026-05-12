@@ -10,16 +10,13 @@ Guida rapida per avviare l'ambiente Docker per l'analisi firmware.
 # 1. Vai nella directory del progetto
 cd tesi-mangili
 
-# 2. Dai permessi alle directory di lavoro
-chmod -R 777 retdec_klee/ angr/
-
-# 3. Build dell'immagine Docker (10-15 minuti)
+# 2. Build dell'immagine Docker
 docker-compose build
 
-# 4. Avvia il container
+# 3. Avvia il container
 docker-compose up -d
 
-# 5. Verifica che sia attivo
+# 4. Verifica che sia attivo
 docker-compose ps
 ```
 
@@ -43,7 +40,7 @@ docker-compose ps
 # Entra nel container
 docker-compose exec analysis bash
 
-# Ora sei dentro! Prompt:
+# Prompt:
 [firmware] /workspace $
 ```
 
@@ -57,13 +54,15 @@ bash klee_pipeline.sh
 # Script ANGR
 cd /workspace/angr
 python3 boot_main_exploration.py
+python3 boot_main_memory_hooks.py
+python3 UART.py
 ```
 
 ### Uscita e Arresto
 
 ```bash
 # Esci dal container
-exit
+[firmware] /workspace $ exit
 
 # Ferma il container
 docker-compose down
