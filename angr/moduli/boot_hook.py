@@ -1,6 +1,25 @@
 import angr
 import claripy
 
+ALL_TYPES_STRING = '''
+typedef unsigned char BYTE;
+typedef unsigned short WORD;
+typedef unsigned int UINT;
+typedef unsigned int DWORD;
+typedef unsigned int FSIZE_t;
+
+typedef struct _FILINFO{
+    FSIZE_t fsize;    
+    WORD    fdate;    
+    WORD    ftime;     
+    BYTE    fattrib;  
+    char    fname[13];  
+} FILINFO;
+
+'''
+
+angr.types.register_types(angr.types.parse_types(ALL_TYPES_STRING))
+
 class HookFRead(angr.SimProcedure):
     """
     Hook per la funzione f_read di FatFS.
@@ -17,9 +36,10 @@ class HookFRead(angr.SimProcedure):
         0 (FR_OK - successo)
     """
     def run(self, fil, buf, count, read_ptr):
+        count = self.state.solver.eval(count)
         magic = self.state.globals.get('magic')
         self.state.memory.store(buf, magic)
-        self.state.memory.store(read_ptr, claripy.BVV(magic.size(), 32), endness='Iend_LE')
+        self.state.memory.store(read_ptr, claripy.BVV(count, 32), endness=self.state.arch.memory_endness)
             
         return 0 
 
@@ -39,12 +59,20 @@ class HookFStat(angr.SimProcedure):
         0 (FR_OK - file trovato)
     """
     def run(self, file_path, filinfo):
-        fsize = self.state.globals.get('file_size')
-        self.state.memory.store(filinfo, fsize, endness='Iend_LE', inspect=False, disable_actions=False, condition=None)
-        mem_read = self.state.memory.load(filinfo, 4, endness='Iend_LE', inspect=False)
-        self.state.solver.add(mem_read == fsize)
-        fname = "WalkHNG-APP.bin\x00"
-        self.state.memory.store(filinfo + 9, fname)
+
+        filinfo_obj = self.state.mem[filinfo].struct._FILINFO
+
+        fsize = claripy.BVS(f'file_size', 32)
+        self.state.globals['file_size'] = fsize
+        fname = b"WalkHNG-APP.bin\x00"
+        
+        filinfo_obj.fsize = fsize
+
+        cnt = 0
+        for n in list(fname):
+            filinfo_obj.fname[cnt] = claripy.BVV(n, 8)
+            cnt += 1
+            
         return 0
     
 

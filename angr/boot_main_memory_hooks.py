@@ -95,10 +95,7 @@ cfg = proj.analyses.CFGFast()
 state.memory.store(0x20000000, b'\x00' * 0x20000)
 
 #simulazione 1MB di flash
-state.memory.store(0x1fff75e0, 0x0400, size=2, endness='Iend_LE')
-
-file_size = claripy.BVS("size", 32)
-state.globals['file_size'] = file_size
+#state.memory.store(0x1fff75e0, 0x0400, size=2, endness='Iend_LE')
 
 magic = claripy.BVS("magic_sig", 32 * 8)  
 state.globals['magic'] = magic
@@ -187,4 +184,7 @@ if simgr.found:
 
     for i, msg in enumerate(logs):
         print(f"  [{i}] {msg.strip()}")
+        
+    # ==================== Footer ====================
+    print(f"\n{'='*WIDTH}\n")
 
