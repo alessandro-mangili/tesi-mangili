@@ -1,0 +1,338 @@
+\documentclass{report}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{setspace}
+\usepackage[italian]{babel}
+\usepackage{hyperref}
+\usepackage{xurl}  
+\usepackage{enumitem}
+\usepackage[
+  backend=biber,
+  style=numeric,     % numeri [1], [2]... oppure: authoryear, alphabetic
+  urldate=iso
+]{biblatex}
+
+\addbibresource{biblio.bib}  % nome del tuo file .bib
+\geometry{a4paper, margin=2.5cm}
+
+\begin{document}
+\begin{titlepage}
+    \centering
+    
+    % logo università
+    \includegraphics[width=15cm]{logo-unimi.jpg}
+    
+    \vspace{0.8cm}
+    
+    {\small CORSO DI LAUREA TRIENNALE IN INFORMATICA\par}
+    
+    \vspace{2cm}
+    
+    {\LARGE\bfseries Analisi di Sicurezza di Firmware IoT Medicale\\
+    tramite Symbolic Execution\par}
+    
+    \vspace{3cm}
+    
+    % Relatore e candidato affiancati
+    \begin{minipage}{0.45\textwidth}
+        \flushleft
+        Relatore: \quad Prof. Danilo Mauro Bruschi\\
+        Correlatore: \quad Andrea Monzani
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \flushright
+        Elaborato Finale di:\\
+        Alessandro Mangili\\
+        24181A
+    \end{minipage}
+    
+    \vfill
+    
+    {\small\scshape Anno Accademico 2025-2026\par}
+\end{titlepage}
+\newpage
+\chapter{Introduzione}
+    \section{Sicurezza del Firmware nei Dispositivi Medicali}
+    I dispositivi medicali embedded rappresentano ad oggi una categoria particolarmente critica dal punto di vista della sicurezza informatica. A differenza di dispositivi IT classici, questi operano in contesti in cui un malfunzionamento o una compromissione puó tradursi in rischi per la salute dei pazienti o per i loro dati.
+    
+    La crescente connettivitá dei dispositivi medicali - tramite interfacce Bluetooth, Wi-Fi, USB o altri protocolli - ha ampliato enormemente i vettori di attacco possibili, esponendoli a minacce che in passato erano una prerogativa dei dispositivi classici. Come riportato dall'Agenzia per la Cybersicurezza Nazionale~\cite{acn2025}, nel periodo 2023-2025 - sul territorio nazionale - si sono verificati mediamente 4,7 eventi cyber malevoli al mese ai danni di strutture sanitarie, dei quali la metà hanno avuto impatti sui servizi erogati e sulla privacy dei pazienti.
+    
+    A ciò si aggiunge la complessità intrinseca dei dispositivi IoT e della loro analisi: i sorgenti sono raramente disponibili, e i binari risultanti sono spesso privi di simboli di debug, compilati per architetture non standard e progettati per operare in ambienti con scarse risorse hardware. Queste caratteristiche rendono difficile l'utilizzo di strumenti di analisi pensati per sistemi standard.
+    
+    \section{Obiettivi della tesi}
+L’obiettivo del progetto è quello di esplorare strumenti e metodologie per l’analisi di sicurezza di firmware embedded in dispositivi medicali, utilizzando come caso di studio il firmware dell’Holter Walk400h, un monitor cardiaco ambulatoriale rappresentativo della categoria di dispostivi medicali a bassa complessità ma con firmware non banale.
+L’analisi si è focalizzata sull’applicazione di tecniche di symbolic execution per identificare potenziali vulnerabilità e comportamenti anomali. 
+
+\newpage
+\chapter{Symbolic Execution}
+\section{Introduzione alla Symbolic Execution}
+    La \textbf{symbolic execution} è una tecnica di analisi statica dei 
+    programmi introdotta a metà degli anni '70, con 
+    l'obiettivo di verificare se determinate proprietà potessero essere 
+    violate da porzioni di codice. Gli aspetti di interesse tipici includono 
+    l'esecuzione di divisioni per zero, la dereferenziazione di puntatori 
+    nulli, e la presenza di backdoor o meccanismi che consentano di 
+    aggirare controlli di autenticazione.
+
+    Nell'esecuzione \textbf{concreta}, un programma viene eseguito su 
+    input specifici e un solo percorso di esecuzione viene esplorato ad 
+    ogni esecuzione. L'esecuzione simbolica supera questo limite 
+    permettendo di esplorare simultaneamente più percorsi, ovvero quelli 
+    che il programma seguirebbe sotto input diversi. L'idea fondamentale 
+    è quella di sostituire i valori concreti in input con 
+    \textbf{valori simbolici}, lasciando che il motore di esecuzione 
+    ragioni su tutti i possibili valori che questi potrebbero assumere.
+
+    L'esecuzione è affidata a un \textbf{symbolic execution engine}, il 
+    quale mantiene, per ogni percorso esplorato, uno \textbf{stato 
+    simbolico} composto da:
+    \begin{itemize}
+        \item la \textbf{memoria simbolica}, che associa a ogni variabile 
+        un'espressione simbolica anziché un valore concreto;
+        \item il \textbf{path constraint}, ovvero l'insieme dei vincoli 
+        logici accumulati lungo il percorso, che descrivono le condizioni 
+        sui valori simbolici necessarie affinché quel percorso venga 
+        raggiunto.~\cite{uniroma}~\cite{Cadar_sym_ex_survey}
+    \end{itemize}
+\section{Fondamenti Teorici}
+    \paragraph{Symbolic State}
+
+    Piú formalmente, uno \textbf{Stato Simbolico} é composto dal program counter corrent, dal contenuto dei registri, dagli stack frame e dal contenuto della memoria. Questi ultimi tre elementi possono contenere una combinazione di valori concreti e variabili simboliche, insieme ai vincoli che li generano.
+
+    A partire da uno stato iniziale, il motore esegue il programma un'istruzione alla volta, aggiornando lo stato di conseguenza: i valori delle variabili concrete vengono aggiornati direttamente, mentre sulle variabili simboliche vengono aggiunti vincoli.
+    \paragraph{Path Conditions} 
+
+    Le Path Conditions sono delle formule logiche che descrivono i vincoli sugli input simbolici affinchè un determinato percorso venga raggiunto. A ciascun punto di diramazione, il motore genera nuovi stati figli, ognuno dei quali eredita la path condition del genitore estesa con il predicato che caratterizza il ramo intrapreso. Un percorso é considerato \textit{feasable} se e solo se la sua path condition è soddisfacibile, ovvero esiste almeno un'assegnazione concreta agli input simbolici che la rende vera. ~\cite{davidson2013fie}~\cite{Cadar_sym_ex_survey}
+    
+    \paragraph{SMT Solver} La verifica della soddisfacibilità delle path conditions é delegata ad un \textbf{SMT Solver}, uno strumento formale in grado di determinare se una formula logica (\textit{Satisfiability Modulo Theories}), uno strumento in grado di determinare se una formula logica ammette una soluzione. Nell'ambito della Symbolic Execution il solver SMT viene interrogato ad ogni diramazione per stabilire quali sono i rami percorribili. Tra i solver piú diffusi ci sono \textbf{Z3} e \textbf{STP}, i quali sono ampiamente integrati nei principali framework di analisi simbolica.
+~\cite{SMT_springer}??
+
+    
+    \paragraph{Execution Tree} L'\textbf{Execution Tree} é la struttura dati che rappresenta l'insieme di tutti i percorsi esplorati durante l'analisi. Ogni nodo dell'albero corrisponde ad uno stato del programma (PC, valori concreti e simbolici, registri, path condition). Ogni arco rappresenta la transizione da uno stato al successivo, mentre i nodi foglia corrispondono a stati terminali: percorsi completati, errori rilevati o rami scartati. ~\cite{Cadar_sym_ex_survey}
+
+\section{Sfide e Limitazioni}
+    La symbolic execution pur essendo uno strumento potente per l'analisi automatica di software non è esente da problemi. Le principali sfide sono:
+\begin{enumerate}
+    \item \textbf{Path explosion.} Una delle sfide principali della symbolic execution è la Path Explosion ossia la crescita esponenziale dei percorsi all'aumentare della complessità del programma.
+    
+    \item \textbf{Gestione dei loop.} I programmi reali contengono frequentemente strutture iterative, talvolta con numeri di iterazioni indeterminati o potenzialmente infiniti. In questi casi l'engine rischia di non terminare senza convergere ad un risultato.
+    
+    \item \textbf{Interazioni con ambiente esterno.} I programmi interagiscono con l'ambiente esterno attraverso chiamate di sistema, periferiche e altri sistemi hardware. Modellare correttamente tali interazioni è complesso poichè non sempre il comportamento esterno è ben noto o facilmente riproducibile. 
+    
+    \item \textbf{Memory modeling}. Accessi a puntatori e strutture dati dinamiche richiedono modelli accurati per evitare di avere falsi positivi o negativi. In contesti embedded il problema si acuisce per la presenza di zone di memoria mappate su periferiche hardware.
+\end{enumerate}
+\section{Tecniche per Mitigare le Limitazioni}
+    \begin{enumerate}
+        \item \textbf{Concolic Execution.} La \textit{concolic execution} è una tecnica che combina l'esecuzione concreta con quella simbolica. Il programma viene eseguito con input concreti, raccogliendo simultaneamente i vincoli simbolici lungo il percorso. Questa tecnica mira a limitare il problema di \textbf{path explosion} limitando, a ogni esecuzione, l'esplorazione a un percorso concreto.
+        \item \textbf{State Merging.} Il \textit{State Merging} consiste nel fondere stati simbolici simili in uno più generico, riducendo il numero di stati attivi da esplorare. Sebbene questa tecnica comporti imprecisioni, consente di contere l'esplosione degli stati in presenza di numerosi branch condizionali.
+        \item \textbf{State Pruning.} Il \textit{state pruning} rileva gli stati 
+        simbolici già analizzati in precedenza e li scarta prima che vengano 
+        rieseguiti. Due stati sono considerati equivalenti se 
+        condividono lo stesso program counter e gli stessi valori per tutte 
+        le variabili simboliche. Questa tecnica è particolarmente efficace 
+        in presenza di loop e interrupt-driven code, come dimostrato 
+        da FIE~\cite{davidson2013fie}, dove il pruning ha aumentato di 
+        sei volte il numero di analisi completate rispetto alla modalità 
+        senza ottimizzazioni.
+    \end{enumerate}
+
+    
+https://link.springer.com/content/pdf/10.1007/s00165-020-00527-y.pdf
+
+\newpage
+\chapter{Strumenti e Tecnologie}
+In questo capitolo vengono presentati gli strumenti utilizzati nelle diverse fasi del progetto. Il lavoro si è diviso in due macro-fasi: una prima fase di \textbf{reverse engeneering} del firmware, volta ad ottenere una rappresentazione analizzabile del binario, e la parte di analisi simbolica volta all'identificazione di potenziali vulnerabilità.
+
+La fase di estrazione del binario di reverse engeneering è stato condotto in parte da un altro tesista, che ha permesso di estrarre e ricostruire le componenti principali del firmware del dispositivo medicale. A partire da tali analisi, il presente lavoro di è concentrato sull'applicazione di tecniche di symbolic excecution al binario estratto.
+
+Gli strumenti di seguito riportati coprono l'intero flusso di analisi:
+\begin{itemize}
+    \item \textbf{Ghidra}, sviluppato dalla NSA, è stato utilizzato per il disassembly e la decompilazione del firmware, fornendo una rappresentazione leggibile del firmware;
+    \item \textbf{RetDec}, il decompilatore open-source sviluppato da Avast, è stato utilizzato per elevare il binario in codice LLVM IR, necessaria per l'analisi con KLEE;
+    \item \textbf{KLEE}, symbolic execution engine basato su codice LLVM;
+    \item \textbf{Angr}, framework Python per l'analisi binaria; opera direttamente sul file binario senza necessità di compilazione intermedia.
+\end{itemize}
+
+AGGIUNGERE IN CASO PARTE SU ALTRI TOOL CHE NON SONO STATI UTILIZZATI????
+
+\section{Ghidra}
+\textit{Ghidra} è un framework di reverse engeneering creato e mantentuto dalla \textbf{U.S. National Security Agency}. È un tool che permette a ricercatori di sicurezza, analisti di malware e sviluppatori ad analizzare codice compilato per comprendere come funzionae identificare vulnerabilità di sicurezza. Ghidra supporta una grande varità di Instruction Set provenienti da architetture differenti (ARM, MIPS, PowerPC, e altre). Ghidra trasforma il codice macchina grezzo in pseudo-codice leggibile come C/C++.
+
+\section{RetDec}
+\textit{RetDec} è un tool open-source sviluppato da Avast che si occupa della traduzione/lifting di binari a codice intermedio LLVM IR. Il nome RetDec deriva da \textbf{Retargetable Decompiler} indicando come l'obiettivo del progetto sia quello di creare un decompilatore generico di binari. Questo tool supporta un gran numero di architetture e accetta in input file di diversi formati. Poiché è basato su LLVM fa sì che non sia legato a particolari architetture, sistemi operativi o formati di file eseguibili.
+
+RetDec, oltre che da decompilatore, offre anche funzionalitá come: 
+\begin{itemize}[noitemsep]
+    \item analisi statica
+    \item estrattore di simboli di debug
+    \item ricostruzioni di istruzioni
+    \item rilevamento e ricostruzione di funzioni e di classi gerarchiche in C
+    \item disassembler e altro.
+\end{itemize}
+\section{KLEE}
+    \textit{Klee} è framework di esecuzione simbolica che esplora automaticamente molteplici percorsi di esecuzione di un programma trattando gli input come valori simbolici piuttosto che concreti. Combina symbolic execution e constraint solving per generare casi di test con un alta copertura del codice e trovare bug nel software. Klee esegue LLVM Bitcode permettendogli di analizzare programmi scritti in linguaggi che compilano in LLVM IR, come C/C++ ~\cite{klee}. 
+    
+    Le funzionalità principali di Klee sono:
+    \begin{itemize}[noitemsep]
+        \item generazione automatica di test-case ad alta copertura
+        \item gestione della memoria simbolica e operazioni complesse con puntatori
+        \item rileva vari errori di esecuzione
+        \item risoluzione dei vincoli
+        \item riproduzione dei test case
+    \end{itemize}
+
+    Il \textit{symbolic execution engine} si occupa di interpretare le istruzioni LLVM Bitcode una ad una, tracciando valori simbolici e constraints tra diversi cammini di esecuzione. Quando il risultato di una condizione dipende da un valore simbolico, l'engine esplora tutti i percorsi forkando lo stato di esecuzione.
+
+    Klee si interfaccia con diversi \textit{constraint solver} come: STP, Z3, metaSMT e altri per determinare quale cammino di esecuzione sia fattibile generando gli input concreti che lo attraversano. Vengono inoltre fornite diverse euristiche di ricerca per decidere il prossimo cammino da esplorare:
+    \begin{itemize}[noitemsep]
+        \item Depth-First Search (DFS)
+        \item Breadth-First Search (BFS)
+        \item Random Path
+        \item Weighted Random
+        \item Coverage-Optimized Search
+    \end{itemize}
+
+    KLEE mette a disposizione diversi strumenti da linea di comando: 
+    \texttt{klee} è il tool principale che prende in input LLVM bitcode 
+    ed esegue l'analisi simbolica; \texttt{kleaver} permette di 
+    interagire direttamente con il constraint solver; \texttt{klee-stats} 
+    visualizza le statistiche dell'esecuzione e \texttt{klee-replay} 
+    consente di rieseguire i test case per riprodurre i bug trovati.
+\section{Angr}
+    \textit{Angr} è un framework open-source per l'analisi di binari, sviluppato 
+    dal Computer Security Lab dell'Università della California Santa Barbara e da 
+    SEFCOM dell'Arizona State University. È implementato come una suite di librerie 
+    Python 3 ed è indipendente dall'architettura target, supportando quindi binari 
+    compilati per diverse piattaforme. Le funzionalità principali offerte da angr 
+    includono: esecuzione simbolica dinamica, analisi statica, disassembly e 
+    \textit{lifting} a rappresentazione intermedia, analisi del flusso di controllo, 
+    analisi delle dipendenze dei dati, \textit{Value-Set Analysis} (VSA) e 
+    decompilazione. A differenza di KLEE, che opera su codice sorgente compilato 
+    in LLVM Bitcode, angr lavora direttamente sui binari, rendendolo particolarmente 
+    adatto a scenari in cui il codice sorgente non è disponibile. Internamente, 
+    angr traduce le istruzioni binarie in una rappresentazione intermedia tramite 
+    VEX IR, sulla quale applica le proprie analisi simboliche e statiche. ~\cite{angr}
+\newpage
+
+\chapter{Dispostivio Walk400h}
+    \section{Caratteristiche}
+    Il Walk400h é un dispositivo Holter prodotto da Cardioline S.p.a, azienda con sede a trento, destinato alla registrazione ambulatoriale prolungata del segnale ECG, con una durata di registrazione fino a 7 giorni. Ai fini di questo lavoro non sono di interesse gli aspetti legati all'acquisizione clinica del segnale, quanto piuttosto l'architettura del sistema embedded che gestisce il dispositivo.
+
+    Dal punto di vista architetturale, il Walk400h è basato su un microcontrollore della famiglia \textbf{ARM Cortex-M}, con un firmware eseguito in modalitá \textbf{THUMB}. Il dispositivo integra una memoria Flash di 1MB utilizzata per il firmware. Per quanto riguarda la memorizzazione dei dati del paziente e aggiornamenti del firmware viene invece usata una \textbf{scheda SD}.
+
+    Il Walk400h espone diversi canali di interazione con l'esterno che costituiscono, da un punto di vista della sicurezza, altrettante superfici di attacco potenziali: l'interfaccia \textbf{USB} per il trasferimento dei dati registrati verso il software di analisi, un'interfaccia \textbf{seriale UART} utilizzata per il logging interno, e il meccanismo di aggiornamento basato su \textbf{scheda SD}, quest'ultimo di particolare interesse in quanto rappresenta il principale punto di ingresso di input non fidati nel sistema.
+
+    \section{Reverse Engeneering del firmware}
+    Una volta definito il target, si è passati alla ricostruzione della 
+    struttura del bootloader del Walk400h, passo necessario per 
+    comprenderne il funzionamento e per individuare le porzioni di codice 
+    da sottoporre in seguito a symbolic execution.
+        \subsection{Estrazione e caratteristiche del binario}
+        Il firmware é stato fornite come immagine binaria raw, priva di metadati (formato eseguibile, simboli di debug, ...). 
+        L'analisi statica é stata condotta con \textbf{Ghidra} che ha permesso di determinare le caratteristiche architetturali necessarie per una decompilazione corretta:
+        \begin{itemize}[noitemsep]
+            \item \textbf{Architettura}: ARM Cortex-M3
+            \item \textbf{Set di istruzioni}: Thumb, little-endian
+            \item \textbf{Base di caricamento (VMA)}: \texttt{0x08000000}, 
+            coerente con il layout tipico della memoria Flash su 
+            microcontrollori di questa famiglia
+            \item \textbf{Entry point del bootloader}: \texttt{0x08001e34}
+        \end{itemize}
+
+        Questi parametri sono stati successivamente riutilizzati come parametri per la fase di decompilazione tramite RetDec, necessaria per produrre una rappresentazione LLVM IR del bootloader analizzabile da KLEE.
+
+        \newpage
+        \subsection{Identificazione delle funzioni chiavi}
+        A partire dall'entry point, l'analisi del flusso di controllo ha permesso di ricostruire la logica principale del bootloader e di isolare un sottoinsieme di funzioni ritenute critiche per la sicurezza del dispositivo, in quanto ritenute responsabili della gestione dell'aggiornamento firmware e dell'accesso alla SD Card.
+
+        \begin{figure}[h]
+        \centering
+        \includegraphics[width=0.8\textwidth]{img/bootloader-flowchart.png}
+        \caption{Flowchart semplificato delle funzioni chiave del bootloader del Walk400h.}
+        \label{fig:bootloader-flowchart}
+        \end{figure}
+
+
+    \section{Funzioni critiche identificate}
+
+        L'analisi del flowchart ricostruito in Sezione 4.2 ha permesso di 
+        isolare un sottoinsieme di funzioni ritenute critiche ai fini della 
+        sicurezza del dispositivo.
+
+        \begin{description}
+            \item[\texttt{boot\_main}] punto d'ingresso della logica di avvio, 
+            responsabile dell'orchestrazione del processo di verifica e 
+            aggiornamento del firmware. \\
+            \textbf{Criticità}: componente centrale che decide se procedere 
+            con l'aggiornamento sulla base dell'esito di alcune verifiche; 
+            un errore di logica in questo punto può compromettere 
+            l'intero processo di boot.
+
+            \item[\texttt{walk\_check\_update\_file}]
+                verifica della validità del file di aggiornamento 
+                (\texttt{WALKLITE-APP.bin}) prima che il relativo contenuto venga 
+                scritto in memoria Flash. \\
+            \textbf{Criticità}: costituisce l'unico punto di controllo tra un 
+                file proveniente da un dispositivo di storage removibile e la 
+                scrittura in memoria persistente; una validazione insufficiente a 
+                questo livello permetterebbe la scrittura di un firmware non 
+                verificato.
+
+            \item[\texttt{walk\_update\_flash}]
+                scrittura effettiva del nuovo firmware in memoria 
+                Flash. \\
+                \textbf{Criticità}: operazione privilegiata e irreversibile; un 
+                suo utilizzo scorretto (ad esempio raggiungibile bypassando i 
+                controlli di \texttt{walk\_check\_update\_file}) comporterebbe la 
+                persistenza di codice malevolo sul dispositivo.
+
+            \item[\texttt{f\_open}]
+                apertura del file di aggiornamento sulla SD Card, 
+                tramite la libreria FatFs (struttura \texttt{FIL}). \\
+                \textbf{Criticità}: gestisce nome file e flag di apertura 
+                provenienti da un dispositivo di storage removibile, quindi non 
+                fidato. \\
+
+            \item[\texttt{f\_read}] 
+                lettura dei dati dal file di aggiornamento aperto 
+                tramite \texttt{f\_open}.\\
+                \textbf{Criticità}: i dati letti alimentano direttamente sia la 
+                fase di validazione (es. magic number nell'header) sia, in caso 
+                di superamento dei controlli, la successiva scrittura in Flash: 
+                rappresenta quindi il principale punto di ingresso di input non 
+                fidati nel sistema. \\
+        \end{description}
+
+    \section{Meccanismi di monitoraggio implementati}
+
+        Per supportare l'esplorazione simbolica con gli strumenti di analisi utilizzati e raccogliere informazioni sul comportamento del firmware lungo i diversi percorsi esplorati, sono stati implementati due meccanismi di osservabilità, 
+        descritti in seguito.
+
+        \subsection{Cattura dei messaggi UART}
+
+            Una prima soluzione prevista era l'intercettazione diretta delle scritture verso il registro MMIO della periferica UART. Questo approccio non é stato tuttavia utilizzato nelle analisi successive, poiché l'inserimento di breakpoint a livello di memoria su un registro periferico introduce un overhead che cresce rapidamente con il numero di stati simbolici attivi durante l'esecuzione.
+
+            È stato quindi adottato un approccio a livello piú alto, basato sull'intercettazione della funzione ad alto livello utilizzata per il logging di debug, i cui messaggi vengono raccolti e associati a ciascuno stato simbolico esplorato. In questo modo, ogni percorso mantiene una propria cronologia che può essere consultata a fine esecuzione per ricostruire quali rami decisionali siano attraversati.
+
+        \subsection{Monitoraggio della Flash}
+
+            Per l'approccio "breakpoint in memoria" è stato necessario 
+            un meccanismo in grado di rilevare, durante l'esplorazione simbolica, 
+            il momento in cui il firmware tenta una scrittura nella regione di 
+            Flash riservata all'applicazione.
+
+            A tale scopo è stato implementato un meccanismo di monitoraggio che 
+            intercetta tutte le scritture in memoria effettuate durante 
+            l'esecuzione simbolica, filtrando quelle dirette alla regione Flash 
+            dell'applicazione, corrispondente, per l'architettura STM32/ARM 
+            Cortex-M, alla zona di memoria successiva al bootloader. 
+            Alla prima scrittura rilevata in tale regione, l'esplorazione dello 
+            stato corrente viene marcata come terminata: questa condizione 
+            costituisce il criterio di arresto adottato nell'approccio "breakpoint 
+            in memoria".
+
+\newpage
+\printbibliography
+\end{document}
