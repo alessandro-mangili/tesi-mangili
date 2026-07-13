@@ -393,8 +393,9 @@ RetDec, oltre che da decompilatore, offre anche funzionalitá come:
                 \caption{Problemi riscontrati nella costruzione del modulo eseguibile e relative soluzioni.}
                 \label{tab:klee-module}
                 \end{table}
-            
             \FloatBarrier
+
+            \inputminted[ frame=single, linenos, breaklines,bgcolor=gray!10,]{C}{../retdec_klee/wrappers/wrapper.c}
             
             \subsection{Stub delle periferiche e simbolizzazione mirata}
                 Oltre ai conflitti strutturali descritti in Sezione~5.1.2, l'esecuzione 
@@ -424,11 +425,14 @@ RetDec, oltre che da decompilatore, offre anche funzionalitá come:
                 \caption{Problemi riscontrati nella simbolizzazione degli input e relative soluzioni.}
                 \label{tab:klee-stub}
             \end{table}
-            
-\FloatBarrier
+        \FloatBarrier
+        
+        \newpage
+        
         \section{Approccio Angr}
         \subsection{Configurazione del progetto ed esecuzione Blind}
         Il progetto Angr é stato configurato specificando l'architettura (\texttt{ARMCortexM}), l'indirizzo di caricamento (\texttt{0x08000000}) e l'entry point del bootloader individuato nella Sezione 4.2, con il bit THUMB impostato sull'indirizzo di ingresso.
+        
         \inputminted[ frame=single, linenos, breaklines,bgcolor=gray!10,]{python}{../angr/blind_exploration.py}
 
         
