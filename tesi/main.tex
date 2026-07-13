@@ -12,7 +12,10 @@
   style=numeric,     % numeri [1], [2]... oppure: authoryear, alphabetic
   urldate=iso
 ]{biblatex}
-
+\usepackage[highlightmode=immediate]{minted}
+\usepackage{float}
+\usepackage{booktabs}   % per \toprule, \midrule, \bottomrule
+\usepackage{placeins}   % per \FloatBarrier
 \addbibresource{biblio.bib}  % nome del tuo file .bib
 \geometry{a4paper, margin=2.5cm}
 
@@ -113,7 +116,8 @@ L’analisi si è focalizzata sull’applicazione di tecniche di symbolic execut
     \paragraph{Execution Tree} L'\textbf{Execution Tree} é la struttura dati che rappresenta l'insieme di tutti i percorsi esplorati durante l'analisi. Ogni nodo dell'albero corrisponde ad uno stato del programma (PC, valori concreti e simbolici, registri, path condition). Ogni arco rappresenta la transizione da uno stato al successivo, mentre i nodi foglia corrispondono a stati terminali: percorsi completati, errori rilevati o rami scartati. ~\cite{Cadar_sym_ex_survey}
 
 \section{Sfide e Limitazioni}
-    La symbolic execution pur essendo uno strumento potente per l'analisi automatica di software non è esente da problemi. Le principali sfide sono:
+    La symbolic execution pur essendo uno strumento potente per l'analisi automatica di software non è esente da problemi. Le principali sfide sono:\addbibresource{biblio.bib}  % nome del tuo file .bib
+\geometry{a4paper, margin=2.5cm}
 \begin{enumerate}
     \item \textbf{Path explosion.} Una delle sfide principali della symbolic execution è la Path Explosion ossia la crescita esponenziale dei percorsi all'aumentare della complessità del programma.
     
@@ -334,5 +338,108 @@ RetDec, oltre che da decompilatore, offre anche funzionalitá come:
             in memoria".
 
 \newpage
+    \chapter{Metodologia}
+        \section{Approccio RetDec + KLEE}
+            
+            \subsection{Pipeline di decompilazione}
+                Per poter applicare KLEE al firmware del Walk400h é stato necessario ottenere una rappresentazione in LLVM IR, formato su cui l'engine di symbolic execution opera nativamente. A tale scopo, il binario raw estratto ed analizzato nel punto 4.2 é stato passato in input a RetDec con i parametri architetturali individuati in fase di reverse engineering (modalitá THUMB, entry point e indirizzo di caricamento), ottenendo come output il bitcode LLVM corrispondente.
+    
+                Poiché RetDec non riusciva a completare la decompilazione dell'intero file binario del firmware, la cui dimensione originale é di 1 MB. Per risolvere il problema sono stati estratti i primi 256 KB del firmware. Questa strategia é giustificata dal layout standard della memoria flash ARM Cortex-M e verificata tramite l'analisi con Ghidra:
+                    \begin{itemize}[noitemsep]
+                        \item \textbf{Vector table}: 0x08000000 - 0x080003FF, ~1KB
+                        \item \textbf{codice eseguibile}: 0x08000400 - ~0x08028200 (~160KB)
+                        \item \textbf{dati statici}: resto del binario
+                    \end{itemize}
+    
+                Lo script per l'estrazione e la decompilazione é riportato di seguito.
+                \inputminted[ frame=single, linenos, breaklines,bgcolor=gray!10]{bash}{../retdec_klee/retdec_pipeline.sh}
+                \newpage
+                \subsection{Costruzione del modulo eseguibile}
+                
+                Il bitcode prodotto da RetDec non è direttamente eseguibile da KLEE: 
+                il suo utilizzo ha richiesto la risoluzione di una serie di 
+                incompatibilità strutturali, riassunte in 
+                Tabella~\ref{tab:klee-module}, individuate in modo incrementale a 
+                partire dagli errori restituiti da \texttt{llvm-as} e da KLEE stesso.
+                
+                \begin{table}[h]
+                \centering
+                \small
+                \begin{tabular}{p{3.2cm} p{4.5cm} p{4.8cm}}
+                \toprule
+                \textbf{Problema} & \textbf{Sintomo} & \textbf{Soluzione} \\
+                \midrule
+                Variabili globali malformate & 
+                \texttt{invalid use of function-local name} in fase di assemblaggio & 
+                Normalizzazione delle dichiarazioni tramite sostituzione testuale mirata \\
+                \midrule
+                Entry point mancante & 
+                \texttt{KLEE: ERROR: Entry function 'main' not found} & 
+                Creazione di un modulo wrapper con \texttt{main()}, che invoca 
+                \texttt{boot\_main} con argomenti resi simbolici, linkato al bitcode 
+                del bootloader \\
+                \midrule
+                Conflitti di target/datalayout e simboli duplicati & 
+                Warning di linking e funzioni non risolte & 
+                Normalizzazione di target triple/datalayout; funzioni originali 
+                dichiarate a \textit{weak linkage} \\
+                \midrule
+                Variabile globale non caricabile & 
+                \texttt{KLEE: ERROR: Unable to load symbol() while initializing globals} & 
+                Ridefinizione della variabile da globale esterna a globale 
+                inizializzata a 0 \\
+                \bottomrule
+                \end{tabular}
+                \caption{Problemi riscontrati nella costruzione del modulo eseguibile e relative soluzioni.}
+                \label{tab:klee-module}
+                \end{table}
+            
+            \FloatBarrier
+            
+            \subsection{Stub delle periferiche e simbolizzazione mirata}
+                Oltre ai conflitti strutturali descritti in Sezione~5.1.2, l'esecuzione 
+                simbolica ha incontrato limitazioni legate all'assenza di un modello 
+                per le periferiche hardware e alla gestione delle variabili locali, 
+                riassunte in Tabella~\ref{tab:klee-stub}.
+                
+                \begin{table}[h]
+                \centering
+                \small
+                \begin{tabular}{p{3.2cm} p{4.5cm} p{4.8cm}}
+                \toprule
+                \textbf{Problema} & \textbf{Sintomo} & \textbf{Soluzione} \\
+                \midrule
+                Accessi hardware non modellabili & 
+                \texttt{KLEE: ERROR: invalid pointer: klee\_make\_symbolic} su registri 
+                MMIO & 
+                Sanitizzazione del bitcode: sostituzione dei \texttt{load} da 
+                indirizzi hardware e rimozione delle \texttt{store} corrispondenti \\
+                \midrule
+                Variabile locale passata per riferimento & 
+                \texttt{Wrong size given to klee\_make\_symbolic} & 
+                Sostituzione, a livello di LLVM IR, del riferimento allo stack con una 
+                variabile globale dedicata (buffer \texttt{magic}) \\
+                \bottomrule
+                \end{tabular}
+                \caption{Problemi riscontrati nella simbolizzazione degli input e relative soluzioni.}
+                \label{tab:klee-stub}
+            \end{table}
+            
+\FloatBarrier
+        \section{Approccio Angr}
+        \subsection{Configurazione del progetto ed esecuzione Blind}
+        Il progetto Angr é stato configurato specificando l'architettura (\texttt{ARMCortexM}), l'indirizzo di caricamento (\texttt{0x08000000}) e l'entry point del bootloader individuato nella Sezione 4.2, con il bit THUMB impostato sull'indirizzo di ingresso.
+        \inputminted[ frame=single, linenos, breaklines,bgcolor=gray!10,]{python}{../angr/blind_exploration.py}
+
+        
+        Un primo tentativo ha adottato un'esecuzione simbolica ``blind'', priva di un target specifico: l'esplorazione avanza istruzione per istruzione su tutti i percorsi raggiungibili, terminando quando non restano piú stati attivi. Questo approccio si é rivelato inefficiente, poiché l'assenza di un obiettivo non consente di indirizzare l'esplorazione verso le funzioni di interesse.
+
+        Oltre all'inefficienza, l'esecuzione blind si arresta dopo poche istruzioni: l'analisi dello stato mostra che il flusso rimane bloccato all'interno di cicli di attesa legati all'inizializzazione delle periferiche hardware, cicli che in ambiente simbolico non terminano mai poiché i registri hardware non vengono aggiornati da un controllore fisico esterno. Per questo problema sono state valutate due soluzioni:
+        \begin{itemize}
+            \item Modellazione simbolica delle periferiche: rendere simboliche zone di memoria MMIO, permettendo ad angr di esplorare tutti i possibili stati dei registri
+            \item Stub delle funzioni bloccanti: Sostituzione delle funzioni che dipendono dai cicli di attesa hardware 
+con procedure che restituiscono immediatamente un valore fisso
+        \end{itemize}
+        
 \printbibliography
 \end{document}
