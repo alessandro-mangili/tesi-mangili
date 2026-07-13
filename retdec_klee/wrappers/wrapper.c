@@ -1,4 +1,3 @@
-// stubs.c - ARM Cortex-M instruction stubs for KLEE
 #include <stdint.h>
 #include <string.h>
 
@@ -20,7 +19,7 @@ extern int function_8007fb8(int arg1, int arg2);
 
 int main(void) {
     int arg1, arg2, arg3, arg4;
-    // Rendi gli argomenti simbolici
+    
     klee_make_symbolic(&arg1, sizeof(arg1), "arg1");
     klee_make_symbolic(&arg2, sizeof(arg2), "arg2");
     
