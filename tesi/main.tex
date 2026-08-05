@@ -1,23 +1,55 @@
-\documentclass{report}
+\documentclass[12pt]{extreport}
 \usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
 \usepackage{graphicx}
 \usepackage{geometry}
 \usepackage{setspace}
 \usepackage[italian]{babel}
-\usepackage{hyperref}
-\usepackage{xurl}  
+\usepackage{xurl}
+\usepackage[
+  pdfauthor={Alessandro Mangili},
+  pdftitle={Analisi di Sicurezza di Firmware IoT Medicale tramite Symbolic Execution},
+  pdfsubject={Tesi di laurea},
+  colorlinks=true,
+  allcolors=blue
+]{hyperref}
+\usepackage[nameinlink]{cleveref}
+\usepackage{xspace}  
 \usepackage{enumitem}
 \usepackage[
   backend=biber,
   style=numeric,     % numeri [1], [2]... oppure: authoryear, alphabetic
   urldate=iso
 ]{biblatex}
-\usepackage[highlightmode=immediate]{minted}
+\usepackage[newfloat]{minted}
 \usepackage{float}
+ 
 \usepackage{booktabs}   % per \toprule, \midrule, \bottomrule
 \usepackage{placeins}   % per \FloatBarrier
 \addbibresource{biblio.bib}  % nome del tuo file .bib
 \geometry{a4paper, margin=2.5cm}
+\usepackage[a-1b]{pdfx}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning}
+
+%-------------------------------------------------------------------------------
+% Notes
+%-------------------------------------------------------------------------------
+\newcommand{\mynote}[2]{\xspace\fbox{\bfseries\sffamily\footnotesize{#1}}
+    {\scriptsize$\blacktriangleright$\textsf{\small\emph{#2}}$\blacktriangleleft$}}
+\newcommand{\am}[1]{\textcolor{red}{\mynote{AndrM}{#1}}}
+\newcommand{\amst}[2]{\textcolor{red}{\st{#1} {#2}}}
+
+%-------------------------------------------------------------------------------
+% Minted ENV
+%-------------------------------------------------------------------------------
+\newminted[bashcode]{bash}{frame=single, linenos, breaklines,bgcolor=gray!10}
+\newminted[llvmcode]{llvm}{frame=single, breaklines, bgcolor=gray!10, fontsize=\footnotesize}
+\newmintedfile[bashfile]{bash}{frame=single, linenos, breaklines,bgcolor=gray!10}
+\newmintedfile[cfile]{C}{frame=single, linenos, breaklines,bgcolor=gray!10}
+\newmintedfile[pythonfile]{python}{frame=single, linenos, breaklines,bgcolor=gray!10}
 
 \begin{document}
 \begin{titlepage}
@@ -55,395 +87,565 @@
     
     {\small\scshape Anno Accademico 2025-2026\par}
 \end{titlepage}
-\newpage
-\chapter{Introduzione}
-    \section{Sicurezza del Firmware nei Dispositivi Medicali}
-    I dispositivi medicali embedded rappresentano ad oggi una categoria particolarmente critica dal punto di vista della sicurezza informatica. A differenza di dispositivi IT classici, questi operano in contesti in cui un malfunzionamento o una compromissione puó tradursi in rischi per la salute dei pazienti o per i loro dati.
-    
-    La crescente connettivitá dei dispositivi medicali - tramite interfacce Bluetooth, Wi-Fi, USB o altri protocolli - ha ampliato enormemente i vettori di attacco possibili, esponendoli a minacce che in passato erano una prerogativa dei dispositivi classici. Come riportato dall'Agenzia per la Cybersicurezza Nazionale~\cite{acn2025}, nel periodo 2023-2025 - sul territorio nazionale - si sono verificati mediamente 4,7 eventi cyber malevoli al mese ai danni di strutture sanitarie, dei quali la metà hanno avuto impatti sui servizi erogati e sulla privacy dei pazienti.
-    
-    A ciò si aggiunge la complessità intrinseca dei dispositivi IoT e della loro analisi: i sorgenti sono raramente disponibili, e i binari risultanti sono spesso privi di simboli di debug, compilati per architetture non standard e progettati per operare in ambienti con scarse risorse hardware. Queste caratteristiche rendono difficile l'utilizzo di strumenti di analisi pensati per sistemi standard.
-    
-    \section{Obiettivi della tesi}
-L’obiettivo del progetto è quello di esplorare strumenti e metodologie per l’analisi di sicurezza di firmware embedded in dispositivi medicali, utilizzando come caso di studio il firmware dell’Holter Walk400h, un monitor cardiaco ambulatoriale rappresentativo della categoria di dispostivi medicali a bassa complessità ma con firmware non banale.
-L’analisi si è focalizzata sull’applicazione di tecniche di symbolic execution per identificare potenziali vulnerabilità e comportamenti anomali. 
+\input{chapters/introduzione}
+\input{chapters/background}
+\input{chapters/walk}
+\input{chapters/methodology}
+    \chapter{Risultati}
+        \section{RetDec + Klee}
+            L'esecuzione simbolica della pipeline RetDec + Klee non ha prodotto risultati significativi per quanti riguarda l'analisi, mettendo in luce le difficoltá di questi strumenti per analizzare un firmware embedded reale.
 
-\newpage
-\chapter{Symbolic Execution}
-\section{Introduzione alla Symbolic Execution}
-    La \textbf{symbolic execution} è una tecnica di analisi statica dei 
-    programmi introdotta a metà degli anni '70, con 
-    l'obiettivo di verificare se determinate proprietà potessero essere 
-    violate da porzioni di codice. Gli aspetti di interesse tipici includono 
-    l'esecuzione di divisioni per zero, la dereferenziazione di puntatori 
-    nulli, e la presenza di backdoor o meccanismi che consentano di 
-    aggirare controlli di autenticazione.
+            \subsection{Esiti dell'esecuzione}
+            L'esecuzione con KLEE è terminata dopo 277 istruzioni, con un solo percorso esplorato in modo parziale e nessun percorso completato. La terminazione è avvenuta in corrispondenza di un accesso a puntatore non valido (\texttt{null page access}), senza che l'esecuzione raggiungesse la logica di validazione del \textit{magic number} all'interno di \texttt{walk\_check\_update\_file}. Nonostante ció l'output mostra che la pipiline è comunque riuscita ad avanzare fino all'ingresso di \texttt{walk\_check\_update\_file}, superando le fasi di inizializzazione grazie agli stub creati.
 
-    Nell'esecuzione \textbf{concreta}, un programma viene eseguito su 
-    input specifici e un solo percorso di esecuzione viene esplorato ad 
-    ogni esecuzione. L'esecuzione simbolica supera questo limite 
-    permettendo di esplorare simultaneamente più percorsi, ovvero quelli 
-    che il programma seguirebbe sotto input diversi. L'idea fondamentale 
-    è quella di sostituire i valori concreti in input con 
-    \textbf{valori simbolici}, lasciando che il motore di esecuzione 
-    ragioni su tutti i possibili valori che questi potrebbero assumere.
+            \subsection{Decompilazione incompleta}
+            L'analisi della causa del mancato raggiungimento della logica di controllo del \textit{magic number} ha evidenziato il problema principale di questo approccio: il codice prodotto da Retdec non è funzionalmente equivalente al binario originale. Confrontando il decompilato (nelle sue forme pseudo-C e LLVM IR) con il disassemblato Ghidra emergono infatti delle omissioni significative.
 
-    L'esecuzione è affidata a un \textbf{symbolic execution engine}, il 
-    quale mantiene, per ogni percorso esplorato, uno \textbf{stato 
-    simbolico} composto da:
-    \begin{itemize}
-        \item la \textbf{memoria simbolica}, che associa a ogni variabile 
-        un'espressione simbolica anziché un valore concreto;
-        \item il \textbf{path constraint}, ovvero l'insieme dei vincoli 
-        logici accumulati lungo il percorso, che descrivono le condizioni 
-        sui valori simbolici necessarie affinché quel percorso venga 
-        raggiunto.~\cite{uniroma}~\cite{Cadar_sym_ex_survey}
-    \end{itemize}
-\section{Fondamenti Teorici}
-    \paragraph{Symbolic State}
+            In particolare, all'interno di \texttt{walk\_check\_update\_file} manca completamente il ramo di validazione \textit{magic number}. La mancanza di questo questo ramo impedisce a KLEE di esplorare i percorsi che attraversano la validazione del file di aggiornamento, ossia proprio la logica di interesse per l'analisi.
 
-    Piú formalmente, uno \textbf{Stato Simbolico} é composto dal program counter corrent, dal contenuto dei registri, dagli stack frame e dal contenuto della memoria. Questi ultimi tre elementi possono contenere una combinazione di valori concreti e variabili simboliche, insieme ai vincoli che li generano.
+            Non è possibile escludere che l'output di RetDec presenti ulteriori omissioni analoghe per altre porzioni di codice.
 
-    A partire da uno stato iniziale, il motore esegue il programma un'istruzione alla volta, aggiornando lo stato di conseguenza: i valori delle variabili concrete vengono aggiornati direttamente, mentre sulle variabili simboliche vengono aggiunti vincoli.
-    \paragraph{Path Conditions} 
+            Decompilato Ghidra (il ramo di validazione, con 
+            \texttt{mod\_strcmp}, \texttt{strcpy}, ...)
+            
+            \begin{minted}[frame=single, breaklines, bgcolor=gray!10, fontsize=\footnotesize]{c}
+if (res == FR_OK) {
+    f_close(&file_struct);
+    magic[7] = '\0';
+    cmp_res = mod_strcmp("WalkHNG", magic);
+    if ((((cmp_res == 0) && (magic[0x1c] == -0x41)) && (magic[0x1d] == -3)) &&
+        ((magic[0x1e] == -0x2f && (magic[0x1f] == '\x1c')))) {
+        magic[0xf] = '\0';
+        magic[0x1b] = '\0';
+        strcpy(&global_magic, magic + 8);
+        strcat(&global_magic, " v");
+        strcat(&global_magic, magic + 0x10);
+        putc_state = '\0';
+        printf("--> Load File: %s\r", filinfo.fname);
+        printf("--> size: %d bytes\r", filinfo.fsize);
+        printf("--> Code: %s\r", &global_magic);
+        return FR_OK;
+    }
+}
+\end{minted}
 
-    Le Path Conditions sono delle formule logiche che descrivono i vincoli sugli input simbolici affinchè un determinato percorso venga raggiunto. A ciascun punto di diramazione, il motore genera nuovi stati figli, ognuno dei quali eredita la path condition del genitore estesa con il predicato che caratterizza il ramo intrapreso. Un percorso é considerato \textit{feasable} se e solo se la sua path condition è soddisfacibile, ovvero esiste almeno un'assegnazione concreta agli input simbolici che la rende vera. ~\cite{davidson2013fie}~\cite{Cadar_sym_ex_survey}
-    
-    \paragraph{SMT Solver} La verifica della soddisfacibilità delle path conditions é delegata ad un \textbf{SMT Solver}, uno strumento formale in grado di determinare se una formula logica (\textit{Satisfiability Modulo Theories}), uno strumento in grado di determinare se una formula logica ammette una soluzione. Nell'ambito della Symbolic Execution il solver SMT viene interrogato ad ogni diramazione per stabilire quali sono i rami percorribili. Tra i solver piú diffusi ci sono \textbf{Z3} e \textbf{STP}, i quali sono ampiamente integrati nei principali framework di analisi simbolica.
-~\cite{SMT_springer}??
-
-    
-    \paragraph{Execution Tree} L'\textbf{Execution Tree} é la struttura dati che rappresenta l'insieme di tutti i percorsi esplorati durante l'analisi. Ogni nodo dell'albero corrisponde ad uno stato del programma (PC, valori concreti e simbolici, registri, path condition). Ogni arco rappresenta la transizione da uno stato al successivo, mentre i nodi foglia corrispondono a stati terminali: percorsi completati, errori rilevati o rami scartati. ~\cite{Cadar_sym_ex_survey}
-
-\section{Sfide e Limitazioni}
-    La symbolic execution pur essendo uno strumento potente per l'analisi automatica di software non è esente da problemi. Le principali sfide sono:\addbibresource{biblio.bib}  % nome del tuo file .bib
-\geometry{a4paper, margin=2.5cm}
-\begin{enumerate}
-    \item \textbf{Path explosion.} Una delle sfide principali della symbolic execution è la Path Explosion ossia la crescita esponenziale dei percorsi all'aumentare della complessità del programma.
-    
-    \item \textbf{Gestione dei loop.} I programmi reali contengono frequentemente strutture iterative, talvolta con numeri di iterazioni indeterminati o potenzialmente infiniti. In questi casi l'engine rischia di non terminare senza convergere ad un risultato.
-    
-    \item \textbf{Interazioni con ambiente esterno.} I programmi interagiscono con l'ambiente esterno attraverso chiamate di sistema, periferiche e altri sistemi hardware. Modellare correttamente tali interazioni è complesso poichè non sempre il comportamento esterno è ben noto o facilmente riproducibile. 
-    
-    \item \textbf{Memory modeling}. Accessi a puntatori e strutture dati dinamiche richiedono modelli accurati per evitare di avere falsi positivi o negativi. In contesti embedded il problema si acuisce per la presenza di zone di memoria mappate su periferiche hardware.
-\end{enumerate}
-\section{Tecniche per Mitigare le Limitazioni}
-    \begin{enumerate}
-        \item \textbf{Concolic Execution.} La \textit{concolic execution} è una tecnica che combina l'esecuzione concreta con quella simbolica. Il programma viene eseguito con input concreti, raccogliendo simultaneamente i vincoli simbolici lungo il percorso. Questa tecnica mira a limitare il problema di \textbf{path explosion} limitando, a ogni esecuzione, l'esplorazione a un percorso concreto.
-        \item \textbf{State Merging.} Il \textit{State Merging} consiste nel fondere stati simbolici simili in uno più generico, riducendo il numero di stati attivi da esplorare. Sebbene questa tecnica comporti imprecisioni, consente di contere l'esplosione degli stati in presenza di numerosi branch condizionali.
-        \item \textbf{State Pruning.} Il \textit{state pruning} rileva gli stati 
-        simbolici già analizzati in precedenza e li scarta prima che vengano 
-        rieseguiti. Due stati sono considerati equivalenti se 
-        condividono lo stesso program counter e gli stessi valori per tutte 
-        le variabili simboliche. Questa tecnica è particolarmente efficace 
-        in presenza di loop e interrupt-driven code, come dimostrato 
-        da FIE~\cite{davidson2013fie}, dove il pruning ha aumentato di 
-        sei volte il numero di analisi completate rispetto alla modalità 
-        senza ottimizzazioni.
-    \end{enumerate}
-
-    
-https://link.springer.com/content/pdf/10.1007/s00165-020-00527-y.pdf
-
-\newpage
-\chapter{Strumenti e Tecnologie}
-In questo capitolo vengono presentati gli strumenti utilizzati nelle diverse fasi del progetto. Il lavoro si è diviso in due macro-fasi: una prima fase di \textbf{reverse engeneering} del firmware, volta ad ottenere una rappresentazione analizzabile del binario, e la parte di analisi simbolica volta all'identificazione di potenziali vulnerabilità.
-
-La fase di estrazione del binario di reverse engeneering è stato condotto in parte da un altro tesista, che ha permesso di estrarre e ricostruire le componenti principali del firmware del dispositivo medicale. A partire da tali analisi, il presente lavoro di è concentrato sull'applicazione di tecniche di symbolic excecution al binario estratto.
-
-Gli strumenti di seguito riportati coprono l'intero flusso di analisi:
-\begin{itemize}
-    \item \textbf{Ghidra}, sviluppato dalla NSA, è stato utilizzato per il disassembly e la decompilazione del firmware, fornendo una rappresentazione leggibile del firmware;
-    \item \textbf{RetDec}, il decompilatore open-source sviluppato da Avast, è stato utilizzato per elevare il binario in codice LLVM IR, necessaria per l'analisi con KLEE;
-    \item \textbf{KLEE}, symbolic execution engine basato su codice LLVM;
-    \item \textbf{Angr}, framework Python per l'analisi binaria; opera direttamente sul file binario senza necessità di compilazione intermedia.
-\end{itemize}
-
-AGGIUNGERE IN CASO PARTE SU ALTRI TOOL CHE NON SONO STATI UTILIZZATI????
-
-\section{Ghidra}
-\textit{Ghidra} è un framework di reverse engeneering creato e mantentuto dalla \textbf{U.S. National Security Agency}. È un tool che permette a ricercatori di sicurezza, analisti di malware e sviluppatori ad analizzare codice compilato per comprendere come funzionae identificare vulnerabilità di sicurezza. Ghidra supporta una grande varità di Instruction Set provenienti da architetture differenti (ARM, MIPS, PowerPC, e altre). Ghidra trasforma il codice macchina grezzo in pseudo-codice leggibile come C/C++.
-
-\section{RetDec}
-\textit{RetDec} è un tool open-source sviluppato da Avast che si occupa della traduzione/lifting di binari a codice intermedio LLVM IR. Il nome RetDec deriva da \textbf{Retargetable Decompiler} indicando come l'obiettivo del progetto sia quello di creare un decompilatore generico di binari. Questo tool supporta un gran numero di architetture e accetta in input file di diversi formati. Poiché è basato su LLVM fa sì che non sia legato a particolari architetture, sistemi operativi o formati di file eseguibili.
-
-RetDec, oltre che da decompilatore, offre anche funzionalitá come: 
-\begin{itemize}[noitemsep]
-    \item analisi statica
-    \item estrattore di simboli di debug
-    \item ricostruzioni di istruzioni
-    \item rilevamento e ricostruzione di funzioni e di classi gerarchiche in C
-    \item disassembler e altro.
-\end{itemize}
-\section{KLEE}
-    \textit{Klee} è framework di esecuzione simbolica che esplora automaticamente molteplici percorsi di esecuzione di un programma trattando gli input come valori simbolici piuttosto che concreti. Combina symbolic execution e constraint solving per generare casi di test con un alta copertura del codice e trovare bug nel software. Klee esegue LLVM Bitcode permettendogli di analizzare programmi scritti in linguaggi che compilano in LLVM IR, come C/C++ ~\cite{klee}. 
-    
-    Le funzionalità principali di Klee sono:
-    \begin{itemize}[noitemsep]
-        \item generazione automatica di test-case ad alta copertura
-        \item gestione della memoria simbolica e operazioni complesse con puntatori
-        \item rileva vari errori di esecuzione
-        \item risoluzione dei vincoli
-        \item riproduzione dei test case
-    \end{itemize}
-
-    Il \textit{symbolic execution engine} si occupa di interpretare le istruzioni LLVM Bitcode una ad una, tracciando valori simbolici e constraints tra diversi cammini di esecuzione. Quando il risultato di una condizione dipende da un valore simbolico, l'engine esplora tutti i percorsi forkando lo stato di esecuzione.
-
-    Klee si interfaccia con diversi \textit{constraint solver} come: STP, Z3, metaSMT e altri per determinare quale cammino di esecuzione sia fattibile generando gli input concreti che lo attraversano. Vengono inoltre fornite diverse euristiche di ricerca per decidere il prossimo cammino da esplorare:
-    \begin{itemize}[noitemsep]
-        \item Depth-First Search (DFS)
-        \item Breadth-First Search (BFS)
-        \item Random Path
-        \item Weighted Random
-        \item Coverage-Optimized Search
-    \end{itemize}
-
-    KLEE mette a disposizione diversi strumenti da linea di comando: 
-    \texttt{klee} è il tool principale che prende in input LLVM bitcode 
-    ed esegue l'analisi simbolica; \texttt{kleaver} permette di 
-    interagire direttamente con il constraint solver; \texttt{klee-stats} 
-    visualizza le statistiche dell'esecuzione e \texttt{klee-replay} 
-    consente di rieseguire i test case per riprodurre i bug trovati.
-\section{Angr}
-    \textit{Angr} è un framework open-source per l'analisi di binari, sviluppato 
-    dal Computer Security Lab dell'Università della California Santa Barbara e da 
-    SEFCOM dell'Arizona State University. È implementato come una suite di librerie 
-    Python 3 ed è indipendente dall'architettura target, supportando quindi binari 
-    compilati per diverse piattaforme. Le funzionalità principali offerte da angr 
-    includono: esecuzione simbolica dinamica, analisi statica, disassembly e 
-    \textit{lifting} a rappresentazione intermedia, analisi del flusso di controllo, 
-    analisi delle dipendenze dei dati, \textit{Value-Set Analysis} (VSA) e 
-    decompilazione. A differenza di KLEE, che opera su codice sorgente compilato 
-    in LLVM Bitcode, angr lavora direttamente sui binari, rendendolo particolarmente 
-    adatto a scenari in cui il codice sorgente non è disponibile. Internamente, 
-    angr traduce le istruzioni binarie in una rappresentazione intermedia tramite 
-    VEX IR, sulla quale applica le proprie analisi simboliche e statiche. ~\cite{angr}
-\newpage
-
-\chapter{Dispostivio Walk400h}
-    \section{Caratteristiche}
-    Il Walk400h é un dispositivo Holter prodotto da Cardioline S.p.a, azienda con sede a trento, destinato alla registrazione ambulatoriale prolungata del segnale ECG, con una durata di registrazione fino a 7 giorni. Ai fini di questo lavoro non sono di interesse gli aspetti legati all'acquisizione clinica del segnale, quanto piuttosto l'architettura del sistema embedded che gestisce il dispositivo.
-
-    Dal punto di vista architetturale, il Walk400h è basato su un microcontrollore della famiglia \textbf{ARM Cortex-M}, con un firmware eseguito in modalitá \textbf{THUMB}. Il dispositivo integra una memoria Flash di 1MB utilizzata per il firmware. Per quanto riguarda la memorizzazione dei dati del paziente e aggiornamenti del firmware viene invece usata una \textbf{scheda SD}.
-
-    Il Walk400h espone diversi canali di interazione con l'esterno che costituiscono, da un punto di vista della sicurezza, altrettante superfici di attacco potenziali: l'interfaccia \textbf{USB} per il trasferimento dei dati registrati verso il software di analisi, un'interfaccia \textbf{seriale UART} utilizzata per il logging interno, e il meccanismo di aggiornamento basato su \textbf{scheda SD}, quest'ultimo di particolare interesse in quanto rappresenta il principale punto di ingresso di input non fidati nel sistema.
-
-    \section{Reverse Engeneering del firmware}
-    Una volta definito il target, si è passati alla ricostruzione della 
-    struttura del bootloader del Walk400h, passo necessario per 
-    comprenderne il funzionamento e per individuare le porzioni di codice 
-    da sottoporre in seguito a symbolic execution.
-        \subsection{Estrazione e caratteristiche del binario}
-        Il firmware é stato fornite come immagine binaria raw, priva di metadati (formato eseguibile, simboli di debug, ...). 
-        L'analisi statica é stata condotta con \textbf{Ghidra} che ha permesso di determinare le caratteristiche architetturali necessarie per una decompilazione corretta:
-        \begin{itemize}[noitemsep]
-            \item \textbf{Architettura}: ARM Cortex-M3
-            \item \textbf{Set di istruzioni}: Thumb, little-endian
-            \item \textbf{Base di caricamento (VMA)}: \texttt{0x08000000}, 
-            coerente con il layout tipico della memoria Flash su 
-            microcontrollori di questa famiglia
-            \item \textbf{Entry point del bootloader}: \texttt{0x08001e34}
-        \end{itemize}
-
-        Questi parametri sono stati successivamente riutilizzati come parametri per la fase di decompilazione tramite RetDec, necessaria per produrre una rappresentazione LLVM IR del bootloader analizzabile da KLEE.
-
-        \newpage
-        \subsection{Identificazione delle funzioni chiavi}
-        A partire dall'entry point, l'analisi del flusso di controllo ha permesso di ricostruire la logica principale del bootloader e di isolare un sottoinsieme di funzioni ritenute critiche per la sicurezza del dispositivo, in quanto ritenute responsabili della gestione dell'aggiornamento firmware e dell'accesso alla SD Card.
-
-        \begin{figure}[h]
+Decompilato RetDec (la stessa funzione: dopo \texttt{f\_read} salta direttamente a \texttt{f\_close} e \textit{return 2}, il ramo di validazione non c'è):
+\begin{minted}[frame=single, breaklines, bgcolor=gray!10, fontsize=\footnotesize]{c}
+int32_t walk_check_update_file(void) {
+    // 0x8007be4
+    int32_t v1; // bp-72, 0x8007be4
+    memset(&v1, 0, 32);
+    int32_t v2 = 0; // bp-76, 0x8007bf4
+    if (f_stat(*(int32_t *)0x20002400, &v1) != 0) {
+        // 0x8007cb8
+        return 2;
+    }
+    uint16_t v3 = *(int16_t *)0x1fff75e0; // 0x8007c06
+    if (v3 == -1) {
+        __asm_it();
+    } else {
+        __asm_itttt();
+    }
+    if ((v3 == -1 ? 0xf2000 : (1024 * (int32_t)v3 & 0x3ffc00) - 0xe000) < v1) {
+        // 0x8007cb8
+        return 3;
+    }
+    // 0x8007c24
+    int32_t v4; // bp-40, 0x8007be4
+    f_read(0x2640, &v4, 32, &v2);
+    f_close(0x2640);
+    return 2;
+}
+\end{minted}
+        \section{Angr}
+        \subsection{Esplorazione dei percorsi}
+        
+        L'esplorazione dei percorsi ha raggiunto con successo la funzione 
+        target \texttt{walk\_update\_flash}: il \textit{simulation manager} 
+        riporta uno stato in \texttt{found}, a fronte di 95 stati ancora attivi 
+        e 12 scartati perchè diretti verso l'indirizzo da evitare.
+        
+        \paragraph{Struttura del magic number}
+        
+        Interrogando il solver sui vincoli accumulati lungo il percorso, è 
+        possibile ricostruire la sequenza di byte che il file di aggiornamento 
+        deve contenere per superare la validazione. I 14 vincoli individuati si 
+        traducono nella seguente struttura dell'header:
+        
+        \begin{table}[H]
         \centering
-        \includegraphics[width=0.8\textwidth]{img/bootloader-flowchart.png}
-        \caption{Flowchart semplificato delle funzioni chiave del bootloader del Walk400h.}
-        \label{fig:bootloader-flowchart}
-        \end{figure}
-
-
-    \section{Funzioni critiche identificate}
-
-        L'analisi del flowchart ricostruito in Sezione 4.2 ha permesso di 
-        isolare un sottoinsieme di funzioni ritenute critiche ai fini della 
-        sicurezza del dispositivo.
-
-        \begin{description}
-            \item[\texttt{boot\_main}] punto d'ingresso della logica di avvio, 
-            responsabile dell'orchestrazione del processo di verifica e 
-            aggiornamento del firmware. \\
-            \textbf{Criticità}: componente centrale che decide se procedere 
-            con l'aggiornamento sulla base dell'esito di alcune verifiche; 
-            un errore di logica in questo punto può compromettere 
-            l'intero processo di boot.
-
-            \item[\texttt{walk\_check\_update\_file}]
-                verifica della validità del file di aggiornamento 
-                (\texttt{WALKLITE-APP.bin}) prima che il relativo contenuto venga 
-                scritto in memoria Flash. \\
-            \textbf{Criticità}: costituisce l'unico punto di controllo tra un 
-                file proveniente da un dispositivo di storage removibile e la 
-                scrittura in memoria persistente; una validazione insufficiente a 
-                questo livello permetterebbe la scrittura di un firmware non 
-                verificato.
-
-            \item[\texttt{walk\_update\_flash}]
-                scrittura effettiva del nuovo firmware in memoria 
-                Flash. \\
-                \textbf{Criticità}: operazione privilegiata e irreversibile; un 
-                suo utilizzo scorretto (ad esempio raggiungibile bypassando i 
-                controlli di \texttt{walk\_check\_update\_file}) comporterebbe la 
-                persistenza di codice malevolo sul dispositivo.
-
-            \item[\texttt{f\_open}]
-                apertura del file di aggiornamento sulla SD Card, 
-                tramite la libreria FatFs (struttura \texttt{FIL}). \\
-                \textbf{Criticità}: gestisce nome file e flag di apertura 
-                provenienti da un dispositivo di storage removibile, quindi non 
-                fidato. \\
-
-            \item[\texttt{f\_read}] 
-                lettura dei dati dal file di aggiornamento aperto 
-                tramite \texttt{f\_open}.\\
-                \textbf{Criticità}: i dati letti alimentano direttamente sia la 
-                fase di validazione (es. magic number nell'header) sia, in caso 
-                di superamento dei controlli, la successiva scrittura in Flash: 
-                rappresenta quindi il principale punto di ingresso di input non 
-                fidati nel sistema. \\
-        \end{description}
-
-    \section{Meccanismi di monitoraggio implementati}
-
-        Per supportare l'esplorazione simbolica con gli strumenti di analisi utilizzati e raccogliere informazioni sul comportamento del firmware lungo i diversi percorsi esplorati, sono stati implementati due meccanismi di osservabilità, 
-        descritti in seguito.
-
-        \subsection{Cattura dei messaggi UART}
-
-            Una prima soluzione prevista era l'intercettazione diretta delle scritture verso il registro MMIO della periferica UART. Questo approccio non é stato tuttavia utilizzato nelle analisi successive, poiché l'inserimento di breakpoint a livello di memoria su un registro periferico introduce un overhead che cresce rapidamente con il numero di stati simbolici attivi durante l'esecuzione.
-
-            È stato quindi adottato un approccio a livello piú alto, basato sull'intercettazione della funzione ad alto livello utilizzata per il logging di debug, i cui messaggi vengono raccolti e associati a ciascuno stato simbolico esplorato. In questo modo, ogni percorso mantiene una propria cronologia che può essere consultata a fine esecuzione per ricostruire quali rami decisionali siano attraversati.
-
-        \subsection{Monitoraggio della Flash}
-
-            Per l'approccio "breakpoint in memoria" è stato necessario 
-            un meccanismo in grado di rilevare, durante l'esplorazione simbolica, 
-            il momento in cui il firmware tenta una scrittura nella regione di 
-            Flash riservata all'applicazione.
-
-            A tale scopo è stato implementato un meccanismo di monitoraggio che 
-            intercetta tutte le scritture in memoria effettuate durante 
-            l'esecuzione simbolica, filtrando quelle dirette alla regione Flash 
-            dell'applicazione, corrispondente, per l'architettura STM32/ARM 
-            Cortex-M, alla zona di memoria successiva al bootloader. 
-            Alla prima scrittura rilevata in tale regione, l'esplorazione dello 
-            stato corrente viene marcata come terminata: questa condizione 
-            costituisce il criterio di arresto adottato nell'approccio "breakpoint 
-            in memoria".
-
-\newpage
-    \chapter{Metodologia}
-        \section{Approccio RetDec + KLEE}
-            
-            \subsection{Pipeline di decompilazione}
-                Per poter applicare KLEE al firmware del Walk400h é stato necessario ottenere una rappresentazione in LLVM IR, formato su cui l'engine di symbolic execution opera nativamente. A tale scopo, il binario raw estratto ed analizzato nel punto 4.2 é stato passato in input a RetDec con i parametri architetturali individuati in fase di reverse engineering (modalitá THUMB, entry point e indirizzo di caricamento), ottenendo come output il bitcode LLVM corrispondente.
-    
-                Poiché RetDec non riusciva a completare la decompilazione dell'intero file binario del firmware, la cui dimensione originale é di 1 MB. Per risolvere il problema sono stati estratti i primi 256 KB del firmware. Questa strategia é giustificata dal layout standard della memoria flash ARM Cortex-M e verificata tramite l'analisi con Ghidra:
-                    \begin{itemize}[noitemsep]
-                        \item \textbf{Vector table}: 0x08000000 - 0x080003FF, ~1KB
-                        \item \textbf{codice eseguibile}: 0x08000400 - ~0x08028200 (~160KB)
-                        \item \textbf{dati statici}: resto del binario
-                    \end{itemize}
-    
-                Lo script per l'estrazione e la decompilazione é riportato di seguito.
-                \inputminted[ frame=single, linenos, breaklines,bgcolor=gray!10]{bash}{../retdec_klee/retdec_pipeline.sh}
-                \newpage
-                \subsection{Costruzione del modulo eseguibile}
-                
-                Il bitcode prodotto da RetDec non è direttamente eseguibile da KLEE: 
-                il suo utilizzo ha richiesto la risoluzione di una serie di 
-                incompatibilità strutturali, riassunte in 
-                Tabella~\ref{tab:klee-module}, individuate in modo incrementale a 
-                partire dagli errori restituiti da \texttt{llvm-as} e da KLEE stesso.
-                
-                \begin{table}[h]
-                \centering
-                \small
-                \begin{tabular}{p{3.2cm} p{4.5cm} p{4.8cm}}
-                \toprule
-                \textbf{Problema} & \textbf{Sintomo} & \textbf{Soluzione} \\
-                \midrule
-                Variabili globali malformate & 
-                \texttt{invalid use of function-local name} in fase di assemblaggio & 
-                Normalizzazione delle dichiarazioni tramite sostituzione testuale mirata \\
-                \midrule
-                Entry point mancante & 
-                \texttt{KLEE: ERROR: Entry function 'main' not found} & 
-                Creazione di un modulo wrapper con \texttt{main()}, che invoca 
-                \texttt{boot\_main} con argomenti resi simbolici, linkato al bitcode 
-                del bootloader \\
-                \midrule
-                Conflitti di target/datalayout e simboli duplicati & 
-                Warning di linking e funzioni non risolte & 
-                Normalizzazione di target triple/datalayout; funzioni originali 
-                dichiarate a \textit{weak linkage} \\
-                \midrule
-                Variabile globale non caricabile & 
-                \texttt{KLEE: ERROR: Unable to load symbol() while initializing globals} & 
-                Ridefinizione della variabile da globale esterna a globale 
-                inizializzata a 0 \\
-                \bottomrule
-                \end{tabular}
-                \caption{Problemi riscontrati nella costruzione del modulo eseguibile e relative soluzioni.}
-                \label{tab:klee-module}
-                \end{table}
-            \FloatBarrier
-
-            \inputminted[ frame=single, linenos, breaklines,bgcolor=gray!10,]{C}{../retdec_klee/wrappers/wrapper.c}
-            
-            \subsection{Stub delle periferiche e simbolizzazione mirata}
-                Oltre ai conflitti strutturali descritti in Sezione~5.1.2, l'esecuzione 
-                simbolica ha incontrato limitazioni legate all'assenza di un modello 
-                per le periferiche hardware e alla gestione delle variabili locali, 
-                riassunte in Tabella~\ref{tab:klee-stub}.
-                
-                \begin{table}[h]
-                \centering
-                \small
-                \begin{tabular}{p{3.2cm} p{4.5cm} p{4.8cm}}
-                \toprule
-                \textbf{Problema} & \textbf{Sintomo} & \textbf{Soluzione} \\
-                \midrule
-                Accessi hardware non modellabili & 
-                \texttt{KLEE: ERROR: invalid pointer: klee\_make\_symbolic} su registri 
-                MMIO & 
-                Sanitizzazione del bitcode: sostituzione dei \texttt{load} da 
-                indirizzi hardware e rimozione delle \texttt{store} corrispondenti \\
-                \midrule
-                Variabile locale passata per riferimento & 
-                \texttt{Wrong size given to klee\_make\_symbolic} & 
-                Sostituzione, a livello di LLVM IR, del riferimento allo stack con una 
-                variabile globale dedicata (buffer \texttt{magic}) \\
-                \bottomrule
-                \end{tabular}
-                \caption{Problemi riscontrati nella simbolizzazione degli input e relative soluzioni.}
-                \label{tab:klee-stub}
-            \end{table}
+        \small
+        \begin{tabular}{c c c}
+        \toprule
+        \textbf{Offset (byte)} & \textbf{Valore} & \textbf{Interpretazione} \\
+        \midrule
+        0--6   & \texttt{57 61 6c 6b 48 4e 47} & \texttt{"WalkHNG"} \\
+        \midrule
+        8, 16  & \texttt{00} & padding \\
+        \midrule
+        28--31 & \texttt{bf fd d1 1c} & fine magic \\
+        \bottomrule
+        \end{tabular}
+        \caption{Decodifica dei vincoli sul buffer letto da \texttt{f\_read}.}
+        \label{tab:magic-constraints}
+        \end{table}
         \FloatBarrier
         
-        \newpage
+        Si osserva, dal disassemblato Ghidra, che solo i primi 7 byte (il magic 
+        \texttt{"WalkHNG"}) e gli ultimi 4 byte (\texttt{bf fd d1 1c}) sono 
+        effettivamente vincolanti ai fini della validazione; i byte del padding 
+        possono assumere un valore qualsiasi eccetto per il primo e l'ultimo che sono vincolati.
         
-        \section{Approccio Angr}
-        \subsection{Configurazione del progetto ed esecuzione Blind}
-        Il progetto Angr é stato configurato specificando l'architettura (\texttt{ARMCortexM}), l'indirizzo di caricamento (\texttt{0x08000000}) e l'entry point del bootloader individuato nella Sezione 4.2, con il bit THUMB impostato sull'indirizzo di ingresso.
-        
-        \inputminted[ frame=single, linenos, breaklines,bgcolor=gray!10,]{python}{../angr/blind_exploration.py}
+        Il primo vincolo coinvolge invece la variabile simbolica creata in 
+        \texttt{HookFStat}, corrispondente all'intera struttura 
+        \texttt{FILINFO}: la porzione selezionata (\texttt{[703:672]}) isola il 
+        campo \texttt{fsize}, mentre \texttt{Reverse(...)} corregge l'ordine 
+        dei byte per l'endianness little-endian del microcontrollore. Il 
+        vincolo lega \texttt{filinfo.fsize} al valore di \texttt{available} 
+        calcolato dal firmware: per lo stato trovato, il solver ammette valori 
+        di \texttt{filinfo.fsize} fino a \texttt{0xffff2000} ($\sim$4\,GB), 
+        coerentemente con la vulnerabilità di integer underflow discussa in 
+        Sezione~6.2.3.
 
-        
-        Un primo tentativo ha adottato un'esecuzione simbolica ``blind'', priva di un target specifico: l'esplorazione avanza istruzione per istruzione su tutti i percorsi raggiungibili, terminando quando non restano piú stati attivi. Questo approccio si é rivelato inefficiente, poiché l'assenza di un obiettivo non consente di indirizzare l'esplorazione verso le funzioni di interesse.
+\begin{minted}[frame=single, breaklines, bgcolor=gray!10, fontsize=\footnotesize]{text}
+Total constraints: 14
 
-        Oltre all'inefficienza, l'esecuzione blind si arresta dopo poche istruzioni: l'analisi dello stato mostra che il flusso rimane bloccato all'interno di cicli di attesa legati all'inizializzazione delle periferiche hardware, cicli che in ambiente simbolico non terminano mai poiché i registri hardware non vengono aggiornati da un controllore fisico esterno. Per questo problema sono state valutate due soluzioni:
-        \begin{itemize}
-            \item Modellazione simbolica delle periferiche: rendere simboliche zone di memoria MMIO, permettendo ad angr di esplorare tutti i possibili stati dei registri
-            \item Stub delle funzioni bloccanti: Sostituzione delle funzioni che dipendono dai cicli di attesa hardware 
-con procedure che restituiscono immediatamente un valore fisso
-        \end{itemize}
+  [ 1] <Bool 0xffff2000 >= Reverse(f_stat_<BV32 0x800bcd2>_0x8007c01_965_704[703:672])>
+  [ 2] <Bool f_read_0x0_0x20_0x8007c31_966_1024[1023:1016] == 87>
+  [ 3] <Bool f_read_0x0_0x20_0x8007c31_966_1024[1015:1008] == 97>
+  [ 4] <Bool f_read_0x0_0x20_0x8007c31_966_1024[1007:1000] == 108>
+  [ 5] <Bool f_read_0x0_0x20_0x8007c31_966_1024[999:992] == 107>
+  [ 6] <Bool f_read_0x0_0x20_0x8007c31_966_1024[991:984] == 72>
+  [ 7] <Bool f_read_0x0_0x20_0x8007c31_966_1024[983:976] == 78>
+  [ 8] <Bool f_read_0x0_0x20_0x8007c31_966_1024[975:968] == 71>
+  [ 9] <Bool f_read_0x0_0x20_0x8007c31_966_1024[799:792] == 191>
+  [10] <Bool f_read_0x0_0x20_0x8007c31_966_1024[791:784] == 253>
+  [11] <Bool f_read_0x0_0x20_0x8007c31_966_1024[783:776] == 209>
+  [12] <Bool f_read_0x0_0x20_0x8007c31_966_1024[775:768] == 28>
+  [13] <Bool f_read_0x0_0x20_0x8007c31_966_1024[959:952] == 0>
+  [14] <Bool f_read_0x0_0x20_0x8007c31_966_1024[895:888] == 0>
+\end{minted}
+
+\paragraph{Call Stack}
+
+\begin{minted}[frame=single, breaklines, bgcolor=gray!10, fontsize=\footnotesize]{text}
+0 | boot_main -> walk_update_flash, returning to boot_main
+1 | 0x0 -> 0x0, returning to 0x0
+\end{minted}
+
+        \paragraph{Execution Path}
         
+        A differenza dell'approccio RetDec + KLEE (Sezione~6.1), compare qui il 
+        branch di validazione del magic number, con le chiamate a 
+        \texttt{mod\_strcmp}, \texttt{strcpy} e \texttt{strcat}.
+
+\begin{minted}[frame=single, breaklines, bgcolor=gray!10, fontsize=\scriptsize]{text}
+boot_reset_handler
++-- boot_main
+    +-- HAL_Init
+    +-- walk_uart_setup
+    +-- check_sd_card
+    +-- f_open
+    +-- walk_check_update_file
+    |   +-- f_stat
+    |   +-- f_read
+    |   +-- mod_strcmp
+    |   +-- strcpy
+    |   +-- strcat
+    |   [...]
+    +-- walk_preparing_flash
+    |   +-- HAL_FLASH_Unlock
+    +-- walk_do_flash_programming
+    +-- walk_update_flash
+Total jumps (jumpkinds): 2794
+\end{minted}
+
+        \paragraph{Printf Logs}
+        
+        A chiusura dell'esecuzione vengono riportati i log di debug, che 
+        raccontano in modo più immediato il percorso seguito.
+
+\begin{minted}[frame=single, breaklines, bgcolor=gray!10, fontsize=\footnotesize]{text}
+[ 1] **** WalkHNG Boot v 1.06 ****
+[ 2] --> Debug usart ready...
+[ 3] --> Start Buzzer driver
+[ 4] --> Start TFT driver
+[ 5] Check file WalkHNG-APP.bin
+[ 6] Found upload file WalkHNG-APP.bin
+[ 7] -> Load File:
+[ 8] -> size: 0 bytes
+[ 9] -> Code:  v
+[10] --> Update ready, Left skip, right go update
+\end{minted}
+
+    \subsection{Breakpoint in memoria}
+    Anche l'approccio a breakpoint in memoria ha raggiunto con successo il proprio criterio di terminazione: il \textit{simulation manager} riporta uno stato in \texttt{found}, a fronte di 191 stati ancora attivi, nessuno stato scartato e nessuno stato in errore.
+
+    Rispetto all'esplorazione dei percorsi, sia il numero di stati complessivi sia il numero di salti risultano superiori riflettendo la maggior profonditá raggiunta dall'esecuzione: mentre l'esplorazione si ferma a \texttt{walk\_update\_flash}, il breakpoint in memoria arriva fin dentro a \texttt{HAL\_FLASH\_Program}, la funzione che esegue effettivamente la scrittura su Flash.
+
+    \paragraph{Scrittura in Flash rilevata}
+
+        Il breakpoint sul registro \texttt{mem\_write} è scattato in due 
+        occasioni, corrispondenti a due scritture consecutive di una word 
+        (4 byte) a partire dall'indirizzo \texttt{0x0800e000}, corrispondente 
+        all'inizio della regione Flash applicativa:
+\begin{minted}[frame=single, breaklines, bgcolor=gray!10, fontsize=\footnotesize]{text}
+[FLASH] Scrittura a 0x800e000, Valore: <BV32 f_read_0x20_0x2000_0x8007d25_1060_262144[262119:262112] .. 
+    f_read_0x20_0x2000_0x8007d25_1060_262144[262127:262120] .. 
+    f_read_0x20_0x2000_0x8007d25_1060_262144[262135:262128] .. 
+    f_read_0x20_0x2000_0x8007d25_1060_262144[262143:262136]>
+[FLASH] Scrittura a 0x800e000, Valore: <BV32 f_read_0x20_0x2000_0x8007d25_1062_262144[262119:262112] .. 
+    f_read_0x20_0x2000_0x8007d25_1062_262144[262127:262120] .. 
+    f_read_0x20_0x2000_0x8007d25_1062_262144[262135:262128] .. 
+    f_read_0x20_0x2000_0x8007d25_1062_262144[262143:262136]>
+\end{minted}
+
+        \paragraph{Constraints}
+        
+        Rispetto all'esplorazione dei percorsi (Tabella~\ref{tab:magic-constraints}), 
+        il numero di vincoli è salito da 14 a 17: ai 14 vincoli già discussi, 
+        che fissano il contenuto del \textit{magic number}, si aggiungono tre vincoli 
+        derivanti da una seconda invocazione di \texttt{f\_stat} (indirizzo di 
+        ritorno \texttt{0x8007e01}), effettuata da \texttt{walk\_program\_flash} 
+        prima della scrittura effettiva. Questi vincoli restringono 
+        ulteriormente il valore di \texttt{filinfo.fsize} rispetto al primo 
+        controllo.
+
+\begin{minted}[frame=single, breaklines, bgcolor=gray!10, fontsize=\footnotesize]{text}
+<Bool LShR(Reverse(f_stat_<BV32 0x800bcd2>_0x8007e01_967_704[703:672]), 0xd) != 0x0>
+<Bool 0xffff2000 > Reverse(f_stat_<BV32 0x800bcd2>_0x8007e01_967_704[703:672])>
+<Bool 0x0 <=s (0xa7 + (0 .. 0x80 / (0x0 .. f_stat_<BV32 0x800bcd2>_0x8007e01_967_704[679:672] .. 
+    f_stat_<BV32 0x800bcd2>_0x8007e01_967_704[687:680] .. 
+    f_stat_<BV32 0x800bcd2>_0x8007e01_967_704[695:693])[7:0]) .. 0x0) >> 0x10>
+\end{minted}
+
+\paragraph{Call Stack}
+
+\begin{minted}[frame=single, breaklines, bgcolor=gray!10, fontsize=\footnotesize]{text}
+0 | walk_do_flash_programming -> HAL_FLASH_Program, returning to walk_do_flash_programming
+1 | walk_program_flash -> walk_do_flash_programming, returning to walk_program_flash
+2 | walk_update_flash -> walk_program_flash, returning to walk_update_flash
+3 | boot_main -> walk_update_flash, returning to boot_main
+4 | 0x0 -> 0x0, returning to 0x0
+\end{minted}
+A differenza dell'esplorazione dei percorsi, che si ferma all'ingresso 
+di \texttt{walk\_update\_flash} con uno stack di profondità 2, qui lo 
+stack raggiunge una profondità di 5: l'esecuzione prosegue realmente 
+all'interno del flusso di programmazione della Flash, fino a 
+\texttt{HAL\_FLASH\_Program}.
+
+\paragraph{Execution Path}
+
+\begin{minted}[frame=single, breaklines, bgcolor=gray!10, fontsize=\scriptsize]{text}
+boot_reset_handler
++-- boot_main
+    +-- check_sd_card
+    +-- f_open
+    +-- walk_check_update_file
+    |   +-- f_stat
+    |   +-- f_read
+    |   +-- mod_strcmp
+    |   +-- strcpy
+    |   +-- strcat
+    |   [...]
+    +-- walk_preparing_flash
+    +-- walk_do_flash_programming
+    +-- walk_update_flash
+        +-- f_stat
+        +-- walk_start_flash_erase
+        +-- walk_program_flash
+            +-- f_read
+            +-- printf  [...]  (33 chiamate)
+            +-- walk_do_flash_programming
+                +-- HAL_FLASH_Unlock
+                +-- HAL_FLASH_Program
+                    +-- FLASH_WaitForLastOperation
+Total jumps (jumpkinds): 2938
+\end{minted}
+
+\begin{minted}[frame=single, breaklines, bgcolor=gray!10, fontsize=\footnotesize]{text}
+[ 0] **** WalkHNG Boot v 1.06 ****
+[...]
+[ 4] Check file WalkHNG-APP.bin
+[ 5] Found upload file WalkHNG-APP.bin
+[...]
+[10] >0x800e000-
+[...]  (33 byte, tutti 0x0)
+[43] >2097152
+\end{minted}
+
+        Le voci dalla [10] alla [43] corrispondono al log emesso da 
+        \texttt{walk\_program\_flash} durante la scrittura: l'indirizzo di 
+        destinazione, seguito dai byte scritti (qui simbolicamente concretizzati 
+        a \texttt{0x0}) e infine dalla dimensione complessiva del file, pari a 
+        \texttt{2097152} byte (2\,MB) — un valore che, seppur diverso da quello 
+        osservato nell'esplorazione dei percorsi, conferma ulteriormente 
+        l'assenza di un limite realistico sulla dimensione ammessa per il file 
+        di aggiornamento (Sezione~6.2.3).
+
+    \subsection{La vulnerabilità dell'integer underflow}
+        I vincoli osservati sia nell'esplorazione dei percorsi (Sezione~6.2.1) sia nel breakpoint in memoria (Sezione~6.2.2) hanno mostrato che il limite superiore ammesso per \texttt{filinfo.fsize} è nell'ordine dei \texttt{0xffff2000} byte, un valore ($\sim$4\,GB) del tutto incompatibile con la reale capacità della memoria Flash del dispositivo (dell'ordine del MB).
+
+    \paragraph{Il meccanismo}
+
+        Il controllo sulla dimensione del file di aggiornamento, all'interno 
+        di \texttt{walk\_check\_update\_file}, si basa sulla variabile 
+        \texttt{available}, calcolata a partire dal registro 
+        \texttt{\_flash\_size\_data\_register}:
+
+\begin{minted}[frame=single, breaklines, bgcolor=gray!10, fontsize=\footnotesize]{c}
+if (_flash_size_data_register == 0xffff) {
+    available = (uint32_t)&DAT_000f2000;
+} else {
+    available = (_flash_size_data_register & 0xfff) * 0x400 - 0xe000;
+}
+if (available < filinfo.fsize) {
+    return FR_NOT_READY;
+}
+\end{minted}
+
+        Il firmware non convalida il valore di 
+        \texttt{\_flash\_size\_data\_register} prima di utilizzarlo nel 
+        calcolo. Se tale registro risulta pari a \texttt{0}, l'espressione 
+        \texttt{(0 \& 0xfff) * 0x400 - 0xe000} produce un valore negativo 
+        (\texttt{-0xe000}); poichè \texttt{available} è dichiarata come 
+        \texttt{uint32\_t}, il risultato va incontro a un \textit{integer 
+        underflow}, avvolgendosi (\textit{wrap-around}) al valore 
+        \texttt{0xffff2000} — un limite superiore di fatto inesistente per la 
+        dimensione del file accettato.
+        
+        \paragraph{Verifica sperimentale}
+        
+        La vulnerabilità è stata confermata osservando, tramite Angr, come il 
+        range di valori ammessi per \texttt{filinfo.fsize} cambi al variare del 
+        valore inizializzato in \texttt{\_flash\_size\_data\_register}:
+        
+        \begin{table}[H]
+        \centering
+        \small
+        \begin{tabular}{c c c}
+        \toprule
+        \textbf{\texttt{\_flash\_size\_data\_register}} & \textbf{available (atteso)} & \textbf{\texttt{filinfo.fsize} massimo ammesso} \\
+        \midrule
+        \texttt{0x0000} (non inizializzato) & underflow & \texttt{0xffff2000} ($\sim$4\,GB) \\
+        \midrule
+        \texttt{0x0400} (1024\,KB reali) & $\sim$968\,KiB & \texttt{991231} byte ($\sim$968\,KiB) \\
+        \bottomrule
+        \end{tabular}
+        \caption{Limite superiore di \texttt{filinfo.fsize} ammesso dal solver, in funzione del valore di \texttt{\_flash\_size\_data\_register}.}
+        \label{tab:underflow}
+        \end{table}
+        \FloatBarrier
+
+        Di seguito è riportato il vincolo che varia nell'esecuzione con \textit{breakpoint in memoria}, impostando \texttt{\_flash\_size\_data\_register = 0x0400}:
+
+\begin{minted}[frame=single, breaklines, bgcolor=gray!10, fontsize=\footnotesize]{c}
+  <Bool 0xf2000 > Reverse(f_stat_<BV32 0x800bcd2>_0x8007e01_967_704[703:672])>
+\end{minted}
+        
+        Con il registro correttamente inizializzato a un valore rappresentativo 
+        della memoria Flash reale (\texttt{0x0400}), il limite risultante è 
+        coerente con lo spazio fisicamente disponibile. Con il registro a 
+        \texttt{0} — condizione osservata quando Angr inizializza a zero i 
+        registri hardware non vincolati, ma potenzialmente riproducibile anche 
+        sul dispositivo reale in assenza di un'inizializzazione esplicita, o 
+        tramite manipolazione diretta — il controllo sulla dimensione del file 
+        risulta di fatto privo di effetto.
+
+    \section{Vulnerabilità identificate}
+    
+        Sulla base dei risultati presentati nelle sezioni precedenti, è 
+        possibile riassumere le vulnerabilità individuate nel meccanismo di 
+        aggiornamento del firmware del Walk400h. Questa sezione si limita a 
+        elencarle in modo puntuale.
+        \paragraph{Validazione dell'header insufficiente}
+            Il firmware accetta come valido qualsiasi file di aggiornamento il cui 
+            contenuto inizi con la sequenza di byte determinata in 
+            Sezione~6.2 (Tabella~\ref{tab:magic-constraints}):
+            
+            \begin{itemize}[noitemsep]
+                \item magic header: \texttt{"WalkHNG\textbackslash 0"} (7 byte, offset 0--6);
+                \item corpo: 20 byte, di cui solo due (offset 8 e 16) risultano 
+                effettivamente vincolati dal controllo, entrambi a valore \texttt{0x00};
+                \item sequenza di terminazione: \texttt{bf fd d1 1c} (4 byte, offset 28--31).
+            \end{itemize}
+            
+            Nessun altro byte del file, oltre a questi 11, concorre alla decisione 
+            di accettare o rifiutare l'aggiornamento.
+        
+        \paragraph{Assenza di protezione crittografica}
+            Il meccanismo di validazione osservato non prevede alcuna forma di 
+            verifica dell'autenticità o dell'integrità del file, in particolare:
+            
+            \begin{itemize}[noitemsep]
+                \item non è presente una firma digitale, che consentirebbe di 
+                verificare che il file provenga da una fonte autorizzata;
+                \item non è presente un meccanismo di checksum o hash, che 
+                consentirebbe di rilevare corruzioni o modifiche del file.
+            \end{itemize}
+        
+        \paragraph{Controllo limitato sul nome del file}
+            Il controllo sul nome del file di aggiornamento, osservato nell'analisi 
+            del bootloader (Sezione~4.3), si limita alla corrispondenza esatta con 
+            la stringa \texttt{WalkHNG-APP.bin}, senza ulteriori verifiche sul 
+            percorso o sull'origine del file.
+        
+        \paragraph{Assenza di validazione su \texttt{\_flash\_size\_data\_register}}
+        
+        Come dimostrato in Sezione~6.2.3, il valore del registro 
+        \texttt{\_flash\_size\_data\_register}, utilizzato per calcolare lo 
+        spazio disponibile in Flash (\texttt{available}), non viene validato 
+        prima dell'uso. Un valore pari a zero genera un integer underflow che 
+        porta \texttt{available} ad assumere un valore prossimo al massimo 
+        rappresentabile per un intero a 32 bit (\texttt{0xffff2000}, 
+        $\sim$4\,GB), rendendo di fatto inefficace il controllo sulla 
+        dimensione del file di aggiornamento.
+
+\newpage
+\chapter{Conclusioni}
+    \section{Efficacia e limiti degli strumenti utilizzati}
+        \subsection{Limitazioni RetDec + KLEE}
+            Gli esiti presentati in Sezione~6.1 permettono di trarre alcune conclusioni sull'adeguatezza della pipeline RetDec + Klee per l'analisi di sicurezza di firmware embedded reali.
+    
+            Il problema piú rilevante riscontrato non è di natura computazionale, ma di \textbf{fedeltá di decompilazione}: RetDec non ha prodotto un codice funzionalmente equivalente al binario originale. Come dimostrato in Sezione~6.1.2, l'intero ramo di validazione del magic number risulta mancante. Si tratta di un problema strutturale: qualunque analisi condotta a valle di una compilazione infedele eredita la stessa incompletezza, e non è possibile escludere che ci omissioni analoghe siano presenti anche in altre parti del codice
+    
+            A questo si aggiungono altre limitazioni strettamente legate a KLEE: anche assumendo una decompilazione fedele, l'applicazione di KLEE su un firmware bare-metal resta un processo oneroso. Da un lato, l'assenza di un modello dell'hardware sottostante richiede una dipendenza massiccia da stub, i quali devono essere scritti e mantenuti manualmente per ogni periferica o funzione non modellabile. Dall'altro, l'esecuzione stessa ha richiesto una manipolazione estensiva del codice LLVM IR prodotto da RetDec, per renderlo assemblabile ed eseguibile (Sezione~5.1.2). Entrambi gli interventi allontanano progressivamente il codice dal comportamento reale del firmware, rendendo meno affidabili i risultati.
+    
+            Nonostante queste limitazioni, è opportuno segnalare che la pipeline non è stata del tutto inutile: l'esecuzione è comunque riuscita a progredire fino all'ingresso di \texttt{walk\_check\_update\_file}, superando correttamente le fasi di inizializzazione hardware grazie agli stub. Questo risultato parziale, per quanto lontano dall'obiettivo di un'analisi completa della logica di validazione, conferma che l'approccio non è concettualmente inapplicabile, ma che richiede un investimento sproporzionato di tempo rispetto al beneficio ottenuto.
+    
+        \subsection{Efficacia e limiti dell'approccio con Angr}
+            I risultati ottenuti con Angr, presentati nelle Sezioni~6.2--6.3, 
+            permettono un confronto diretto con la pipeline RetDec + KLEE discussa in precedenza, e restituiscono un bilancio nettamente più positivo, pur non privo di limitazioni proprie.
+    
+            Il vantaggio principale osservato è diretto: lavorando sul binario senza un passaggio intermedio di decompilazione, Angr non eredita il problema di fedeltá che ha compromesso l'approccio precedente.
+            L'\texttt{execution path} ricostruito in Sezione~6.2 include infatti il ramo completo di validazione del magic number. 
+    
+            Ció non significa che l'approccio sia stato privo di difficoltá. Anche con Angr, un'esecuzione simbolica priva di guida(l'approccio ``blind'' discusso in Sezione~5.2.1) si è rivelata impraticabile, bloccandosi nei medesimi cicli di inizializzazione hardware che affliggevano KLEE, per la stessa ragione di fondo: l'assenza di un modello realistico delle periferiche. La differenza rispetto a KLEE non è quindi l'assenza di lavoro manuale, ma la sua natura: mentre con KLEE tale lavoro consisteva in grande parte in interventi correttivi sul codice intermedio, con Angr si è tradotto principalmente nella definizione di stub comportamentali, un'attivitá direttamente piú collegata alla logica del firmware che agli strumenti utilizzati.
+    
+            Questo contrasto è visibile anche a un livello più tecnico: mentre in 
+            Angr è stato possibile scrivere direttamente nel buffer di destinazione 
+            di \texttt{f\_read} tramite l'API di memoria dello stato simbolico, 
+            lo stesso obiettivo con KLEE ha richiesto di aggirare 
+            un vincolo strutturale — l'impossibilità di rendere simbolico 
+            direttamente un indirizzo nello spazio di memoria del programma — 
+            tramite riscrittura manuale del codice intermedio (Sezione~5.1.3).
+    
+            Infine, il confronto tra i due approcci basati su Angr (esplorazione dei percorsi e breakpoint in memoria) evidenza un compromesso tra ampiezza e profonditá: l'esplorazione dei percorsi verifica in modo piú rapido ed economico la sola raggiungibilitá di un target, mentre il breakpoint in memoria, lasciando eseguire realmente il codice, offre un'osservazione piú completa del comportamento del firmware - inclusi eventuali effetti collaterali - al costo di un'esplorazione piú profonda e onerosa. Nessuno dei due approcci è preferibile in assoluto: la scelta dipende dall'obiettivo specifico dell'analisi.
+
+        \subsection{Sintesi comparativa}
+            Il confronto condotto in questo capitolo permette di individuare in Angr lo strumento piú adatto al contesto del firmware embedded analizzato, sia per ragioni strutturali che di comoditá d'uso.
+            Operando direttamente sul binario, Angr non introduce distorsioni in fase di decompilazione, e permette di intervenire sul modello della memoria dello stato simbolico attraverso un'API diretta, senza modifiche manuali del codice intermedio. La sua natura di libreria Python ha inoltre facilitato l'implementazione di meccanismi di osservabilitá personalizzati - la cattura dei messaggi di debug e il breakpoint sulla scrittura in Flash (Capitolo~5) - risultati determinanti per l'interpretazione dei risultati ottenuti nel capitolo~6.
+
+    \section{Impatto di sicurezza delle vulnerabilità identificate}
+        \subsection{Scenario di attacco combinato}
+            Le vulnerabilitá scritte in Sezione~6.3, seppure singolarmente limitate, si combinano in una catena che permette ad un attaccante con accesso fisico temporaneo alla scheda SD del dispositivo di installare firmware arbitrario e non verificato
+            \begin{enumerate}
+                \item \textbf{Preparazione del file.} L'attaccante prepara un file chiamato esattamente \texttt{WalkHNG-APP.bin}
+                \item \textbf{Costruzione dell'header.} L'header del file deve essere composto da:  7 byte del magic \texttt{"WalkHNG"}, i 4 byte di terminazione \texttt{bf fd d1 1c} e il primo e l'ultimo byte del padding devono essere \texttt{0x00}. I restanti byte dell'header e il payload sono liberi.
+                \item \textbf{Assenza di verifica di autenticitá.} Superati i controlli precedenti, il firmware non effettua alcuna verifica sul contenuto del file.
+                \item \textbf{Scrittura su flash.} Superate le verifiche, il firmware procede con la scrittura della memoria Flash senza ulteriori controlli.
+            \end{enumerate}
+    
+            A questa catena si aggiunge, come fattore potenzialmente aggravante, la vulnerabilitá dell'integer underflow su \texttt{\_flash\_size\_data\_register} (Sezione~6.2.3): se un attaccante fosse in grado di influenzare tale registro, il limite sulla dimensione del file risulterebbe di fatto rimosso. Non è stato individuato, nell'ambito di questo lavoro, un meccanismo concreto per farlo dall'esterno; resta quindi una vulnerabilitá dimostrata a livello di modello simbolico, la cui sfruttabilitá pratica richiede ulteriore verifica.
+    
+            L'esito di questa catena di attacco è la possibilitá di installare sul dispositivo, senza autorizzazione, un firmware arbitrario scelto dall'attaccante - con conseguenze che vanno dalla compromissione persistente del dispositivo fino, nella peggiore delle ipotesi, all'alterazione del suo comportamento clinico osservabile.
+        
+        \subsection{Raccomandazioni di mitigazione}
+        \am{Non metterei questa sottosezione, non è nostro il FM quindi non ci interessa mitigare}
+            Sulla base delle vulnerabilità identificate e dello scenario di attacco 
+            descritto in Sezione~7.2.1, si propongono le seguenti raccomandazioni 
+            di mitigazione, ciascuna indirizzata a uno specifico punto della 
+            catena.
+            \begin{enumerate}
+                \item \textbf{Validazione estesa dell'header.} Il controllo 
+                attuale, limitato a 11 byte su un header di 32 (Sezione~6.6.1),
+                potrebbe essere esteso e controlare l'intero contenuto dell'header.
+                Va tuttavia osservato che questa misura da sola offre una protezione 
+                limitata: trattandosi di un valore fisso e non segreto, un header 
+                piú lungo  è comunque ricostruibile tramite reverse engineering del
+                firmware. Il valore pratico è tuttavia innalzare il costo di un attacco 
+                non mirato, non di prevenire un attacco condotto da chi abbia giá accesso 
+                al binario.
+                
+                \item \textbf{Checksum crittografico per l'integrità.} 
+                L'introduzione di un hash crittografico (ad esempio SHA-256) 
+                calcolato sull'intero file di aggiornamento permetterebbe di 
+                rilevare corruzioni o modifiche accidentali o intenzionali del 
+                contenuto, colmando l'assenza rilevata in Sezione~6.3.
+                
+                \item \textbf{Firma digitale per l'autenticazione.} L'adozione di 
+                una firma digitale (ad esempio basata su ECDSA) permetterebbe di 
+                verificare che il file di aggiornamento provenga effettivamente dal 
+                produttore, impedendo l'installazione di firmware arbitrario anche 
+                qualora un attaccante riuscisse a soddisfare i controlli sul nome 
+                del file e sull'header.
+                
+                \item \textbf{Validazione di \texttt{\_flash\_size\_data\_register} 
+                dopo l'uso.} In alternativa alla validazione del registro sorgente,
+                il valore di \texttt{available} potrebbe essere verificato subito 
+                dopo il suo calcolo.
+                
+            \end{enumerate}
+    \section{Sviluppi futuri}
+        L'analisi condotta in questa tesi si è concentrata sul bootloader per 
+        la sua criticità. Il firmware applicativo, eseguito dopo il 
+        trasferimento del controllo a \texttt{run\_app}, non è stato oggetto di 
+        analisi e potrebbe contenere ulteriori vulnerabilità, ad esempio nella 
+        gestione dei dati acquisiti o nelle altre interfacce del dispositivo. 
+        Si potrebbe inoltre verificare come il dispositivo interagisca con 
+        l'applicazione sul terminale, alla ricerca di ulteriori possibili 
+        vettori di attacco.
+        
+        Buona parte del lavoro manuale descritto nel Capitolo~5 (identificazione 
+        delle funzioni da stubbare, scrittura dei singoli hook) potrebbe essere 
+        parzialmente automatizzata a partire dai risultati dell'analisi statica. 
+        In assenza di una tabella dei simboli, tale automazione non potrebbe 
+        basarsi sui nomi delle funzioni, ma su tecniche di riconoscimento per 
+        pattern del codice compilato: ad esempio, database di \textit{Function 
+        ID} (già supportati da Ghidra) permettono di identificare funzioni di 
+        libreria note, come le routine HAL, tramite un confronto a livello di 
+        istruzioni macchina anzichè di simboli. In alternativa, euristiche più 
+        semplici — come la ricerca di cicli di polling su indirizzi MMIO con 
+        timeout, pattern osservato manualmente in questo lavoro (Sezione~5.2.2) 
+        — potrebbero proporre automaticamente candidati da stubbare, riducendo 
+        l'intervento manuale necessario per adattare l'analisi a un nuovo 
+        target.
+        
+        Poichè le vulnerabilità sono state dimostrate solamente a livello 
+        simbolico, un naturale passo successivo consiste nel verificarne la 
+        sfruttabilità concreta su un dispositivo reale. Questo è di interesse 
+        in particolare per l'aspetto rimasto irrisolto in questo lavoro, ovvero 
+        l'identificazione di un meccanismo pratico per influenzare 
+        \texttt{\_flash\_size\_data\_register} (Sezione~6.2.3), così da 
+        convalidare sul campo quanto osservato nel modello.
+    
+
+    \section{Considerazioni finali}
+     Gli obiettivi prefissati per questa tesi possono ritenersi raggiunti: 
+    è stato individuato uno strumento di analisi in grado di operare 
+    efficacemente su firmware bare-metal, ed è stato possibile applicare e 
+    confrontare metodologie di analisi differenti sullo stesso caso di 
+    studio.
+    
+    L'esperienza condotta permette di affermare che l'esecuzione di test di 
+    sicurezza su firmware embedded è un obiettivo raggiungibile, ma tutt'altro 
+    che immediato: richiede, come mostrato nei capitoli precedenti, un 
+    lavoro non trascurabile di adattamento degli strumenti al contesto 
+    specifico, spesso a partire da un'analisi manuale preliminare del 
+    target.
+    
+    Le vulnerabilità individuate nel firmware del Walk400h, più che derivare 
+    da errori di implementazione isolati, riflettono per lo più l'assenza 
+    di politiche di sicurezza strutturate nel processo di aggiornamento — 
+    una scelta verosimilmente legata ai vincoli tipici dei dispositivi 
+    embedded, dove risorse computazionali e di memoria limitate rendono 
+    l'adozione di meccanismi crittografici un costo non sempre ritenuto 
+    giustificabile. Nel contesto di un dispositivo medicale, tuttavia, 
+    questo compromesso merita una riflessione più attenta: la possibilità 
+    di installare firmware non verificato rappresenta un rischio che va 
+    ben oltre la sola integrità del dispositivo, coinvolgendo la sicurezza 
+    del paziente che ne fa uso.
+
+    
 \printbibliography
 \end{document}
