@@ -1,0 +1,22 @@
+\begin{table}[H]
+                \centering
+                \small
+                \begin{tabular}{p{3.2cm} p{4.5cm} p{4.8cm}}
+                \toprule
+                \textbf{Problema} & \textbf{Sintomo} & \textbf{Soluzione} \\
+                \midrule
+                Accessi hardware non modellabili & 
+                \texttt{KLEE: ERROR: invalid pointer: klee\_make\_symbolic} su registri 
+                MMIO & 
+                Sanitizzazione del bitcode: sostituzione dei \texttt{load} da 
+                indirizzi hardware e rimozione delle \texttt{store} corrispondenti \\
+                \midrule
+                Variabile locale passata per riferimento & 
+                \texttt{Wrong size given to klee\_make\_symbolic} & 
+                Sostituzione, a livello di LLVM IR, del riferimento allo stack con una 
+                variabile globale dedicata (buffer \texttt{magic}) \\
+                \bottomrule
+                \end{tabular}
+                \caption{Problemi riscontrati nella simbolizzazione degli input e relative soluzioni.}
+                \label{tab:klee-stub}
+            \end{table}

@@ -1,0 +1,128 @@
+\documentclass[12pt]{extreport}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{setspace}
+\usepackage[italian]{babel}
+\usepackage{xurl}
+\usepackage[
+  pdfauthor={Alessandro Mangili},
+  pdftitle={Analisi di Sicurezza di Firmware IoT Medicale tramite Symbolic Execution},
+  pdfsubject={Tesi di laurea},
+  colorlinks=true,
+  allcolors=blue
+]{hyperref}
+\usepackage[nameinlink]{cleveref}
+\usepackage{xspace}  
+\usepackage{enumitem}
+\usepackage[
+  backend=biber,
+  style=numeric,     % numeri [1], [2]... oppure: authoryear, alphabetic
+  urldate=iso
+]{biblatex}
+\usepackage[newfloat]{minted}
+\usepackage{float}
+ 
+\usepackage{booktabs}   % per \toprule, \midrule, \bottomrule
+\usepackage{placeins}   % per \FloatBarrier
+\addbibresource{biblio.bib}  % nome del tuo file .bib
+\geometry{a4paper, margin=2.5cm}
+\usepackage[a-1b]{pdfx}
+\usepackage{tikz}
+\usepackage{soul}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning}
+
+%-------------------------------------------------------------------------------
+% Notes
+%-------------------------------------------------------------------------------
+\newcommand{\mynote}[2]{\xspace\fbox{\bfseries\sffamily\footnotesize{#1}}
+    {\scriptsize$\blacktriangleright$\textsf{\small\emph{#2}}$\blacktriangleleft$}}
+\newcommand{\am}[1]{\textcolor{red}{\mynote{AndrM}{#1}}}
+\newcommand{\amst}[2]{\textcolor{red}{\st{#1} {#2}}}
+
+%-------------------------------------------------------------------------------
+% Minted ENV
+%-------------------------------------------------------------------------------
+\newminted[bashcode]{bash}{frame=single, linenos, breaklines,bgcolor=gray!10, fontsize=\footnotesize}
+\newminted[llvmcode]{llvm}{frame=single, breaklines, bgcolor=gray!10, fontsize=\footnotesize}
+\newminted[pythoncode]{python}{frame=single, linenos, breaklines,bgcolor=gray!10, fontsize=\small}
+
+\newminted[clangcode]{c}{frame=single, linenos, breaklines,bgcolor=gray!10, fontsize=\small}
+
+\newmintedfile[bashfile]{bash}{frame=single, linenos, breaklines,bgcolor=gray!10}
+\newmintedfile[cfile]{C}{frame=single, linenos, breaklines,bgcolor=gray!10}
+\newmintedfile[pythonfile]{python}{frame=single, linenos, breaklines,bgcolor=gray!10}
+
+\crefname{chapter}{capitolo}{capitoli}
+\Crefname{chapter}{Capitolo}{Capitoli}
+
+\crefname{section}{sezione}{sezioni}
+\Crefname{section}{Sezione}{Sezioni}
+
+\crefname{subsection}{sezione}{sezioni}
+\Crefname{subsection}{Sezione}{Sezioni}
+
+\crefname{subsubsection}{sezione}{sezioni}
+\Crefname{subsubsection}{Sezione}{Sezioni}
+
+\crefname{table}{tabella}{tabelle}
+\Crefname{table}{Tabella}{Tabelle}
+
+\crefname{figure}{figura}{figure}
+\Crefname{figure}{Figura}{Figure}
+
+\crefname{chapter}{capitolo}{capitoli}
+\Crefname{chapter}{Capitolo}{Capitoli}
+
+\begin{document}
+\begin{titlepage}
+    \centering
+    
+    % logo università
+    \includegraphics[width=15cm]{logo-unimi.jpg}
+    
+    \vspace{0.8cm}
+    
+    {\small CORSO DI LAUREA TRIENNALE IN INFORMATICA\par}
+    
+    \vspace{2cm}
+    
+    {\LARGE\bfseries Analisi di Sicurezza di Firmware IoT Medicale\\
+    tramite Symbolic Execution\par}
+    
+    \vspace{3cm}
+    
+    % Relatore e candidato affiancati
+    \begin{minipage}{0.45\textwidth}
+        \flushleft
+        Relatore: \quad Prof. Danilo Mauro Bruschi\\
+        Correlatore: \quad Andrea Monzani
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \flushright
+        Elaborato Finale di:\\
+        Alessandro Mangili\\
+        24181A
+    \end{minipage}
+    
+    \vfill
+    
+    {\small\scshape Anno Accademico 2025-2026\par}
+\end{titlepage}
+
+\begingroup
+\hypersetup{linkcolor=black}
+\tableofcontents
+\endgroup
+\input{chapters/introduzione}
+\input{chapters/background}
+\input{chapters/walk}
+\input{chapters/methodology}
+\input{chapters/risultati}
+    
+\printbibliography
+\end{document}

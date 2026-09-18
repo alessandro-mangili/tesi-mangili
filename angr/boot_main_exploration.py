@@ -91,13 +91,6 @@ state = proj.factory.entry_state(
 state.memory.store(0x20000000, b'\x00' * 0x20000)
 state.register_plugin('printf_log', PrintfLogger())
 
-file_size = claripy.BVS("size", 32)
-state.globals['file_size'] = file_size
-
-magic = claripy.BVS("magic_sig", 32 * 8)  
-state.globals['magic'] = magic
-
-
 simgr = proj.factory.simulation_manager(state)
 simgr.explore(
     find=WALK_FLASH_UPDATE + THUMB, 
@@ -127,20 +120,6 @@ if simgr.found:
             print('=' * WIDTH)
         else:
             print()
-    
-    # ==================== Magic & File Size ====================
-    print_section("Magic & filinfo.fsize")
-    
-    magic_bv = s.globals.get('magic') 
-    magic_bytes = s.solver.eval(magic_bv, cast_to=bytes)
-    print(f"  Header:  {magic_bytes.hex()}")
-    print(f"  Magic:   {magic_bytes[:8]}")
-    print(f"  Body:    {magic_bytes[8:28].hex()}")  
-    print(f"  End:     {magic_bytes[28:32].hex()}")
-    
-    print()
-    size_bv = s.globals.get('file_size') 
-    print(f"  filinfo.fsize = {s.solver.eval(size_bv, cast_to=int)} Bytes")
     
     # ==================== Constraints ====================
     print_section("Constraints")

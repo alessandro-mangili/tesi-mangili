@@ -1,0 +1,262 @@
+\chapter{Background}
+\label{chap:background}
+\section{Symbolic Execution}
+\label{subsec:symbolic_execution}
+\subsection{Introduzione alla Symbolic Execution}
+\label{subsec:intro_symbolic_execution}
+La symbolic execution è una tecnica di analisi dei programmi ibrida tra analisi statica e dinamica introdotta a metà degli anni '70,
+con l'obiettivo di verificare se determinate proprietà potessero essere violate da porzioni di codice. Gli
+aspetti di interesse tipici includono l'esecuzione di divisioni per zero, la dereferenziazione di puntatori
+nulli, e la presenza di backdoor o meccanismi che consentano di aggirare controlli di autenticazione.
+
+L' esecuzione concreta di un programma impone all' esecutore di specificare valori ben definiti per tutte le variabili di input e proprio per questa caratteristica un solo percorso del codice sorgente potrà quindi essere esplorato. L'esecuzione simbolica supera questo limite permettendo di
+esplorare simultaneamente più percorsi, ovvero tutto l' insieme di istruzioni che verrebbero processate a fronte di input diversi.
+L'idea fondamentale dell' analisi simbolica è quindi quella di sostituire i valori concreti in input con valori simbolici, lasciando che il motore di esecuzione ragioni su tutti i possibili valori che questi potrebbero assumere.
+
+Di seguito è riportato un frammento di pseudocodice, esempio classico
+in letteratura~\cite{Cadar_sym_ex_survey}, con il relativo albero di
+esecuzione (Figura~\ref{fig:execution-tree}) che ne illustra il
+funzionamento sotto esecuzione simbolica.
+
+
+\begin{listing}[H]
+\begin{minted}[frame=single, breaklines, bgcolor=gray!10, fontsize=\footnotesize]{C}
+int twice(int v) {
+    return 2 * v;
+}
+
+void testme(int x, int y) {
+    int z = twice(y);
+    if (z == x) {
+        if (x > y + 10)
+            ERROR;
+    }
+}
+
+/* simple driver exercising testme() with symbolic inputs */
+int main() {
+    int x = sym_input();
+    int y = sym_input();
+    testme(x, y);
+    return 0;
+}
+\end{minted}
+\caption{Pseudocodice di esempio~\cite{Cadar_sym_ex_survey}.}
+\label{lst:testme-code}
+\end{listing}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+    node distance=1.3cm and 1.2cm,
+    every node/.style={font=\small},
+    decision/.style={rectangle, rounded corners, draw=orange!70!black, fill=orange!60,
+        text=white, minimum width=2.6cm, minimum height=0.9cm, align=center, thick},
+    leaf/.style={ellipse, draw=red!70!black, fill=red!8, text=black,
+        minimum width=2.2cm, minimum height=1.1cm, align=center, thick},
+    edgelabel/.style={font=\small\itshape}
+]
+
+% Nodo radice
+\node[decision] (root) {$2{\cdot}y == x$};
+
+% Livello 1
+\node[leaf, below left=1.6cm and 1.2cm of root] (leaf1) {$x = 0$ \\ $y = 1$};
+\node[decision, below right=1.6cm and 0.4cm of root] (dec2) {$x > y + 10$};
+
+% Livello 2
+\node[leaf, below left=1.6cm and 0.3cm of dec2] (leaf2) {$x = 2$ \\ $y = 1$};
+\node[leaf, below right=1.6cm and 0.3cm of dec2] (leaf3) {$x = 30$ \\ $y = 15$ \\ \textbf{ERROR!}};
+
+% Frecce
+\draw[-{Latex[length=2.5mm]}, thick] (root) -- (leaf1) node[edgelabel, midway, above left] {false};
+\draw[-{Latex[length=2.5mm]}, thick] (root) -- (dec2)  node[edgelabel, midway, above right] {true};
+
+\draw[-{Latex[length=2.5mm]}, thick] (dec2) -- (leaf2) node[edgelabel, midway, above left] {false};
+\draw[-{Latex[length=2.5mm]}, thick] (dec2) -- (leaf3) node[edgelabel, midway, above right] {true};
+
+\end{tikzpicture}
+\caption{Execution tree per l'esempio in Figura~\ref{lst:testme-code}.}
+\label{fig:execution-tree}
+\end{figure}
+
+L'albero di esecuzione corrispondente (Figura~\ref{fig:execution-tree}) mostra come l'engine di symbolic execution esplori entrambi i rami di ciascuna condizione, accumulando ad ogni diramazione un vincolo sulla path condition. Il nodo radice rappresenta la prima condizione, \texttt{z == x}, riscritta in termini di input simbolici come, \texttt{2y == x}; se la condizione è falsa il percorso termina in uno stato con \texttt{x = 0, y = 1}. Se invece è vera, l'esecuzione prosegue nel secondo controllo generando a sua volta due percorsi: uno che termina normalmente e uno che raggiunge lo stato di errore, individuando così automaticamente un input concreto in grado di far scattare la condizione di \texttt{ERROR}.
+
+Questo semplice esempio evidenzia il valore pratico della symbolic execution rispetto al testing tradizionale: individuare manualmente la combinazione di input che innesca l'errore richiederebbe di risalire ai vincoli, mentre il motore simbolico li deriva automaticamente esplorando l'albero delle possibilità.
+\newline
+
+La simulazione di un certo programma è quindi affidata a un motore di esecuzione simbolica, il quale mantiene, per ogni percorso esplorato, uno \emph{stato} composto da:
+\begin{itemize}
+    \item la memoria simbolica, che associa a ogni variabile un'espressione simbolica anziché un valore concreto;
+    \item i path constraints, ovvero l'insieme dei vincoli logici accumulati lungo il percorso, che descrivono le condizioni sui valori simbolici necessarie affinché quel percorso venga raggiunto~\cite{Baldoni_sym_ex_survey, Cadar_sym_ex_survey}.
+\end{itemize}
+
+\subsection{Fondamenti Teorici}
+\label{subsec:fondamenti_teorici}
+I concetti introdotti informalmente nell'esempio precedente possono ora essere
+formalizzati. La loro definizione segue un ordine logico preciso: lo stato descrive
+cosa il motore di esecuzione mantiene in ogni istante; le path condition descrivono
+i vincoli che tale stato accumula nel tempo; il solver SMT è lo strumento che
+permette di verificarne la soddisfacibilità; l'execution tree, infine, è la struttura
+che organizza l'insieme di tutti gli stati generati durante l'analisi.
+
+\textbf{Symbolic State} Più formalmente, uno Stato Simbolico è composto dal
+program counter corrente, dal contenuto dei registri, dagli stack frame e dal contenuto
+della memoria. Questi ultimi tre elementi possono contenere una combinazione di valori
+concreti e variabili simboliche, insieme ai vincoli che li generano.
+
+A partire da uno stato iniziale, il motore esegue il programma un'istruzione alla volta,
+aggiornando lo stato di conseguenza: i valori delle variabili concrete vengono aggiornati
+direttamente, mentre sulle variabili simboliche vengono aggiunti vincoli. È proprio
+l'insieme di questi vincoli, accumulati progressivamente lungo un percorso, a costituire
+la path condition di quello stato.
+
+\textbf{Path Conditions} Le Path Conditions sono delle formule logiche che descrivono i vincoli
+sugli input simbolici affinché un determinato percorso venga raggiunto. A ciascun punto di
+diramazione, il motore genera nuovi stati figli, ognuno dei quali eredita la path condition
+del genitore estesa con il predicato che caratterizza il ramo intrapreso. Un percorso
+è considerato fattibile se e solo se la sua path condition è soddisfacibile, ovvero esiste
+almeno un'assegnazione concreta agli input simbolici che la rende vera~\cite{Cadar_sym_ex_survey}.
+
+Stabilire se una simile formula sia soddisfacibile non è però un problema che il motore di
+esecuzione simbolica risolve autonomamente: tale verifica viene delegata a un componente
+esterno specializzato, il solver SMT.
+
+\textbf{SMT Solver} La verifica della soddisfacibilità delle path condition è delegata ad un
+SMT Solver, uno strumento formale in grado di determinare se una formula logica (Satisfiability
+Modulo Theories) ammette una soluzione. Nell'ambito della Symbolic Execution
+il solver SMT viene interrogato ad ogni diramazione per stabilire quali sono i rami percorribili. Tra i solver più diffusi ci sono Z3 e STP, i quali
+sono ampiamente integrati nei principali framework di analisi simbolica~\cite{SMT_springer}.
+
+L'insieme delle decisioni prese dal solver a ogni diramazione, e degli stati che ne
+derivano, può essere rappresentato in una singola struttura che ne riassume
+visivamente l'evoluzione complessiva: l'execution tree.
+
+\textbf{Execution Tree} L'Execution Tree è la struttura dati che rappresenta l'insieme di tutti
+i percorsi esplorati durante l'analisi. Ogni nodo dell'albero corrisponde ad uno stato
+del programma (PC, valori concreti e simbolici, registri, path condition). Ogni arco
+rappresenta la transizione da uno stato al successivo, mentre i nodi foglia corrispondono
+a stati terminali: percorsi completati, errori rilevati o rami scartati~\cite{Cadar_sym_ex_survey}.
+
+\subsection{Sfide e Limitazioni}
+\label{subsec:sfide_e_limitazioni}
+La symbolic execution, pur essendo uno strumento potente per l'analisi automatica del software non è
+esente da problemi. Le principali sfide sono:
+
+\begin{enumerate}
+    \item \textbf{Path explosion.} Una delle sfide principali della symbolic execution è la Path Explosion ossia la
+    crescita esponenziale dei percorsi all'aumentare della complessità del programma.
+    \item \textbf{Gestione dei loop.} I programmi reali contengono frequentemente strutture iterative, talvolta con
+    numeri di iterazioni indeterminati o potenzialmente infiniti. In questi casi l'engine rischia di non
+    terminare senza convergere ad un risultato.
+    \item \textbf{Interazioni con ambiente esterno.} I programmi interagiscono con l'ambiente esterno attraverso
+    chiamate di sistema, periferiche e altri sistemi hardware. Modellare correttamente tali interazioni
+    è complesso poiché non sempre il comportamento esterno è ben noto o facilmente riproducibile.
+    \item \textbf{Memory modeling.} Accessi a puntatori e strutture dati dinamiche richiedono modelli accurati. In contesti embedded il problema si acuisce per la presenza di zone di memoria mappate su periferiche hardware~\cite{davidson2013fie}.
+    \item \textbf{Dipendenza dall'architettura target.} L'engine deve riprodurre fedelmente la semantica dell'architettura su cui il programma è destinato ad essere eseguito (set di istruzioni, convenzioni di chiamata, endianness), che può differire significativamente da quella della macchina su cui l'analisi viene effettuata (ad esempio ARM rispetto a x86). Un modello architetturale impreciso o un disallineamento tra le due piattaforme puó introdurre comportamento non rappresentativi del programma reale, o addirittura impedire l'esecuzione.
+\end{enumerate}
+
+    Queste sfide, per quanto formulate qui in termini generali, non pesano allo stesso 
+    modo su ogni classe di software. Nel contesto dei sistemi embedded e dei dispositivi 
+    IoT, in particolare, alcune di esse risultano sistematicamente aggravate: l'assenza 
+    di un sistema operativo completo espone direttamente il codice applicativo alle 
+    periferiche hardware, rendendo l'interazione con l'ambiente esterno (punto 3) non 
+    un caso limite ma la norma; allo stesso modo, l'assenza pressoché costante di 
+    documentazione pubblica su tali periferiche e sul layout di memoria del dispositivo 
+    rende il memory modeling (punto 4) e la fedeltà al modello architetturale (punto 5) 
+    ostacoli da affrontare fin dalle prime fasi dell'analisi. Questa combinazione di fattori è discussa in dettaglio 
+    da Qasem et al.~\cite{qasem2021survey}, che nella loro survey distinguono 
+    esplicitamente le sfide generiche dell'analisi binaria da quelle proprie del 
+    dominio embedded, individuando proprio nella scarsità di informazioni 
+    sull'hardware sottostante e nei vincoli di risorse computazionali i fattori che 
+    più limitano l'applicabilità diretta delle tecniche di symbolic execution 
+    sviluppate per il software general-purpose. Nei capitoli successivi si vedrà come 
+    queste difficoltà si siano concretamente manifestate nell'analisi del firmware 
+    oggetto di questa tesi.
+
+\subsection{Tecniche per Mitigare le Limitazioni}
+\label{subsec:tecniche_per_mitigare_le_limitazioni}
+\begin{enumerate}
+    \item \textbf{Concolic Execution.} La concolic execution è una tecnica che combina l'esecuzione concreta con quella simbolica. Questa tecnica mira a limitare il problema della path explosion, vincolando ogni singola esecuzione a un unico percorso concreto anziché forzare l'esplorazione simultanea di più stati in memoria. Un impiego rilevante di questo paradigma consiste nell'usarlo per modellare l'ambiente esterno al programma — per esempio delle periferiche hardware — quando questo risulta troppo complesso o indocumentato per essere rappresentato simbolicamente, delegando all'esecuzione concreta le porzioni di sistema più difficili da modellare \cite{chipounov2011s2e}. Tuttavia, a differenza delle tecniche simboliche che esplorano più cammini simultaneamente condividendo lo stato in memoria, la concolic execution richiede una riesecuzione completa del programma per ogni nuovo percorso da analizzare: un costo che, se l'ambiente concretamente eseguito è un dispositivo fisico reale anziché un modello software, si moltiplica per il numero di cammini esplorati, potendo rendere questa tecnica più onerosa della sola symbolic execution \cite{cha2012mayhem}.
+    
+    \item \textbf{State Merging.} Il State Merging consiste nel fondere stati simbolici simili in uno più generico, riducendo il numero di stati attivi da esplorare. Per stati simbolici simili si intendono stati aventi lo stesso program counter -- ossia giunti, lungo percorsi diversi, allo stesso punto nel programma. La fusione avviene introducendo per ciascuna variabile del programma un vincolo che ne discrimina il valore in base al percorso di provenienza. Sebbene questa tecnica comporti un aumento della complessità delle formule sottoposte al solver, consente di contenere l'esplosione degli stati in presenza di numerosi branch condizionali.
+    \item \textbf{State Pruning.} Il state pruning rileva gli stati simbolici già analizzati in precedenza e li scarta prima che vengano rieseguiti. Due stati sono considerati equivalenti se condividono lo stesso program counter e gli stessi valori per tutte le variabili simboliche. Questa tecnica è particolarmente efficace in presenza di loop e interrupt-driven code, come dimostrato da FIE, dove il pruning ha aumentato di sei volte il numero di analisi completate rispetto alla modalità senza ottimizzazioni~\cite{davidson2013fie}.
+\end{enumerate}
+
+\section{Strumenti e Tecnologie}
+\label{subsec:strumenti_e_tecnologie}
+In questo capitolo vengono presentati gli strumenti utilizzati nel corso del lavoro di tesi. Per la realizzazione del progetto sono stati impiegati sia strumenti specifici per il reverse engineering del firmware, sia due diversi framework per l'analisi simbolica del binario, il cui utilizzo nelle varie fasi del progetto verrà descritto in dettaglio nel  \Cref{chap:metodologia}.
+
+La fase di estrazione e ricostruzione del binario tramite reverse engineering è stata condotta in parte da un altro tesista, che ha permesso di ottenere le componenti principali del firmware del dispositivo medicale. A partire da tali risultati, il presente lavoro si è concentrato sull'applicazione di tecniche di symbolic execution al binario estratto.
+
+\subsection{Ghidra}
+\label{subsec:ghidra}
+\textit{Ghidra} è un framework di reverse engineering creato e mantenuto dalla \textbf{U.S. National Security Agency}. È uno strumento che permette a ricercatori di sicurezza, analisti di malware e sviluppatori di analizzare codice compilato per identificare e comprendere le vulnerabilità di un dato software. Ghidra supporta una grande varietà di Instruction Set provenienti da architetture differenti (ARM, MIPS, PowerPC, e altre). Offre anche una funzionalità di decompilazione per mostrare all' utente dello pseudo-codice C/C++ a partire dal codice macchina grezzo.~\cite{ghidra}
+
+Nell'ambito di questo lavoro, Ghidra è stato impiegato esclusivamente in fase di analisi statica: caricamento del binario raw, disassemblato e decompilato sono stati utilizzati per ricostruire manualmente la struttura del bootloader (\Cref{subsec:firmware_re} e per identificare le funzioni critiche (Sezione 4.3).Il suo output è stato inoltre utilizzato come riferimento per valutare la fedeltà della decompilazione prodotta da RetDec (Sezione 6.1.2). Non sono state utilizzate le funzionalità di scripting o l'automazione tramite l'API Python/Java del tool.
+
+\subsection{LLVIM IR}
+\label{subsec:llvm_ir}
+LLVM IR (Intermediate Representation) è il linguaggio intermedio alla base del progetto LLVM, un framework open-source per la costruzione di compilatori e strumenti di analisi del codice. LLVM IR si colloca a un livello di astrazione intermedio tra il codice sorgente ad alto livello e il codice macchina, ed è progettato per essere sufficientemente generico da rappresentare programmi provenienti da linguaggi e architetture differenti, pur mantenendo una struttura analizzabile e trasformabile in modo sistematico \cite{llvm}.
+
+LLVM IR offre:
+\begin{itemize}[noitemsep]
+    \item una rappresentazione indipendente dall'architettura di destinazione, che consente di applicare le medesime analisi a binari compilati per piattaforme diverse;
+    \item un formato sia testuale che binario (bitcode), interconvertibili tra loro, utile sia per l'ispezione manuale sia per l'elaborazione automatizzata;
+    \item un ampio insieme di strumenti di trasformazione e ottimizzazione del codice, riutilizzabili anche al di fuori del contesto della compilazione tradizionale;
+    \item un'ampia adozione come formato intermedio in numerosi strumenti di analisi binaria e symbolic execution, tra cui gli stessi framework impiegati in questo lavoro di tesi.
+\end{itemize}
+
+\subsection{RetDec}
+\label{subsec:retdec}
+\textit{RetDec} è un tool open-source sviluppato da Avast che si occupa della traduzione/lifting di binari a codice intermedio LLVM IR. Il nome RetDec deriva da \textbf{Retargetable Decompiler} indicando come l'obiettivo del progetto sia quello di creare un decompilatore generico di binari. Questo tool supporta un gran numero di architetture e accetta in input file di diversi formati. Poichè è basato su LLVM fa sì che non sia legato a particolari architetture, sistemi operativi o formati di file eseguibili.\cite{retdec}
+
+RetDec, oltre che da decompilatore, offre anche funzionalitá come: 
+\begin{itemize}[noitemsep]
+    \item analisi statica
+    \item estrattore di simboli di debug
+    \item ricostruzione di istruzioni
+    \item rilevamento e ricostruzione di funzioni e classi gerarchiche in C
+    \item disassembler e altro.
+\end{itemize}
+\subsection{KLEE}
+\label{subsec:klee}
+    \textit{Klee} è un framework di esecuzione simbolica che esplora automaticamente molteplici percorsi di esecuzione di un programma trattando gli input come valori simbolici piuttosto che concreti. Combina symbolic execution e constraint solving per generare casi di test con un alta copertura del codice e trovare bug nel software. Klee esegue LLVM Bitcode permettendogli di analizzare programmi scritti in linguaggi che compilano in LLVM IR, come C/C++. Nel caso in cui il target di analisi sia invece un binario già compilato — come nel presente lavoro di tesi — è necessario un passaggio preliminare di lifting, che ricostruisca una rappresentazione in LLVM IR a partire dal codice macchina; a tale scopo, in questo lavoro è stato impiegato RetDec (Sezione 2.2.3), il cui output in LLVM IR costituisce l'input fornito a KLEE per l'analisi simbolica.
+    
+    Le funzionalità principali di Klee sono:
+    \begin{itemize}[noitemsep]
+        \item \textbf{generazione automatica di test-case ad alta copertura}, ottenuta forkando l'esecuzione ad ogni branch condizionato da un valore simbolico, così da massimizzare la percentuale di istruzioni e cammini del programma effettivamente esercitati;
+        \item \textbf{gestione della memoria simbolica e operazioni complesse con puntatori}, come array indicizzati con valori simbolici o puntatori il cui target dipende dall'input, non trattabili con una semplice simulazione a valori concreti;
+        \item \textbf{rileva vari errori di esecuzione}, accessi out-of-bounds, divisioni per zero, violazioni di asserzioni);
+        \item \textbf{risoluzione dei vincoli}, per verificarne la soddisfacibilità;
+        \item \textbf{riproduzione dei test case}, forniti in esecuzione reale, riproducono il medesimo percorso individuato durante l'analisi simbolica.
+    \end{itemize}
+
+    l'\textit{engine di esecuzione simbolica} si occupa di interpretare le istruzioni LLVM Bitcode una ad una, tracciando valori simbolici e vincoli tra diversi cammini di esecuzione. Quando il risultato di una condizione dipende da un valore simbolico, l'engine esplora tutti i percorsi forkando lo stato di esecuzione.
+
+    Klee si interfaccia con diversi \textit{constraint solver} come: STP, Z3, metaSMT e altri per determinare quale cammino di esecuzione sia fattibile generando gli input concreti che lo attraversano. Vengono inoltre fornite diverse euristiche di ricerca per decidere il prossimo cammino da esplorare:
+    \begin{itemize}[noitemsep]
+        \item Depth-First Search (DFS)
+        \item Breadth-First Search (BFS)
+        \item Random Path
+        \item Weighted Random
+        \item Coverage-Optimized Search
+    \end{itemize}
+
+    KLEE mette a disposizione diversi strumenti da linea di comando: \texttt{klee} è il tool principale che prende in input LLVM bitcode  ed esegue l'analisi simbolica; \texttt{kleaver} permette di interagire direttamente con il constraint solver; \texttt{klee-stats} visualizza le statistiche dell'esecuzione e \texttt{klee-replay} 
+    consente di rieseguire i test case per riprodurre i bug trovati.~\cite{klee}
+\subsection{Angr}
+\label{subsec:angr}
+    \textit{Angr} è un framework open-source per l'analisi di binari, sviluppato 
+    dal Computer Security Lab dell'Università della California, Santa Barbara e da 
+    SEFCOM dell'Arizona State University. È implementato come una suite di librerie 
+    Python 3 ed è indipendente dall'architettura target, supportando quindi binari 
+    compilati per diverse piattaforme. Le funzionalità principali offerte da Angr 
+    includono: esecuzione simbolica, analisi statica , disassembly e 
+    \textit{lifting} a rappresentazione intermedia, analisi del flusso di controllo, 
+    analisi delle dipendenze dei dati, \textit{Value-Set Analysis} (VSA) e 
+    decompilazione. A differenza di KLEE, che opera su codice sorgente compilato 
+    in LLVM Bitcode, Angr lavora direttamente sui binari, rendendolo particolarmente 
+    adatto a scenari in cui il codice sorgente non è disponibile. Internamente, 
+    Angr traduce le istruzioni binarie in una rappresentazione intermedia tramite 
+    VEX IR, sulla quale applica le proprie analisi simboliche e statiche.

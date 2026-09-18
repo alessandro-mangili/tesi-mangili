@@ -1,0 +1,31 @@
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{p{3.2cm} p{4.5cm} p{4.8cm}}
+\toprule
+\textbf{Problema} & \textbf{Sintomo} & \textbf{Soluzione} \\
+\midrule
+Variabili globali malformate & 
+\texttt{invalid use of function-local name} in fase di assemblaggio & 
+Normalizzazione delle dichiarazioni tramite sostituzione testuale mirata \\
+\midrule
+Entry point mancante & 
+\texttt{KLEE: ERROR: Entry function 'main' not found} & 
+Creazione di un modulo wrapper con \texttt{main()}, che invoca 
+\texttt{boot\_main} con argomenti resi simbolici, linkato al bitcode 
+del bootloader \\
+\midrule
+Conflitti di target/data layout e simboli duplicati & 
+Warning di linking e funzioni non risolte & 
+Normalizzazione di target triple/datalayout; funzioni originali 
+dichiarate a \textit{weak linkage} \\
+\midrule
+Variabile globale non caricabile & 
+\texttt{KLEE: ERROR: Unable to load symbol() while initializing globals} & 
+Ridefinizione della variabile da globale esterna a globale 
+inizializzata a 0 \\
+\bottomrule
+\end{tabular}
+\caption{Problemi riscontrati nella costruzione del modulo eseguibile e relative soluzioni.}
+\label{tab:klee-module}
+\end{table}

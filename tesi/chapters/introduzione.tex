@@ -1,0 +1,42 @@
+\chapter{Introduzione}
+\label{chap:intro}
+\section{Sicurezza del Firmware nei Dispositivi Medicali}
+\label{subsec:Sicurezza_del_Firmware}
+I dispositivi embedded medicali rappresentano ad oggi una categoria particolarmente critica dal punto di
+vista della sicurezza informatica. A differenza di dispositivi IT classici, questi operano in contesti in cui
+un malfunzionamento o una compromissione può tradursi in rischi per la salute dei pazienti o per la loro
+privacy~\cite{halperin2008pacemakers}.
+
+La crescente connettività di questi apparati -- tramite interfacce Bluetooth, Wi-Fi, USB o altri protocolli
+-- ha ampliato enormemente i vettori di attacco possibili, esponendoli a minacce che in passato erano una
+prerogativa solo dei dispositivi classici quali personal computer e server. Come riportato dall'Agenzia
+per la Cybersicurezza Nazionale~\cite{acn2025}, nel periodo 2023--2025 sul territorio nazionale si sono
+verificati mediamente 4,7 eventi cyber malevoli al mese ai danni di strutture sanitarie, dei quali la metà
+ha avuto impatti sui servizi erogati e sulla privacy dei pazienti.
+
+Per contrastare questi attacchi sono state proposte diverse soluzioni, ma le caratteristiche intrinseche di
+questi dispositivi rendono difficile l'utilizzo di strumenti di analisi pensati per sistemi standard. Ad
+esempio, i sorgenti sono raramente disponibili, e i binari risultanti sono spesso privi di simboli di debug,
+compilati per architetture non standard e progettati per operare in ambienti con scarse risorse hardware.
+
+\section{Obiettivi della tesi}
+\label{subsec:obiettivi_tesi}
+L’obiettivo del progetto è quello di esplorare strumenti e metodologie per l’analisi di sicurezza di firmware embedded in dispositivi medicali, utilizzando come caso di studio il firmware dell’Holter Walk400h, un monitor cardiaco ambulatoriale rappresentativo della categoria di dispositivi medicali a bassa complessità ma con firmware non banale. 
+A partire dal lavoro di reverse engineering condotto in
+una precedente tesi~\cite{alberici26}, che ha permesso di ricostruire la struttura del bootloader e di
+identificarne le funzioni critiche, l'obiettivo specifico di questo lavoro è valutare se strumenti di symbolic
+execution quali KLEE e angr permettano di individuare e validare concretamente una vulnerabilità nel
+meccanismo di aggiornamento del firmware, confrontandone al contempo l'efficacia e le limitazioni pratiche
+in un contesto di firmware bare-metal.
+
+\section{Struttura della tesi}
+\label{subsec:struttura_tesi}
+Il resto della tesi è organizzato come segue. Il \Cref{chap:background} introduce i concetti teorici alla base della
+symbolic execution, le relative sfide e le principali tecniche di mitigazione e presenta gli
+strumenti utilizzati nel lavoro: Ghidra, RetDec, KLEE e angr. Il \Cref{chap:Dispostivo_Walk400h} descrive il dispositivo
+Walk400h e il lavoro di reverse engineering del suo bootloader, individuando le funzioni critiche ai fini
+dell'analisi. Il \Cref{chap:metodologia} illustra la metodologia adottata, articolata nei due approcci esplorati --
+RetDec~+~KLEE e Angr. Il \Cref{chap:risultati} presenta i risultati ottenuti con entrambi gli approcci e le
+vulnerabilità identificate. Il \Cref{chap:conclusioni}, infine, discute l'efficacia degli strumenti utilizzati, l'impatto di sicurezza delle vulnerabilità individuate, propone possibili sviluppi futuri e riassume le conclusioni del lavoro.
+
+

@@ -1,0 +1,18 @@
+\begin{table}[H]
+        \centering
+        \small
+        \begin{tabular}{c c c}
+        \toprule
+        \textbf{Offset (byte)} & \textbf{Valore} & \textbf{Interpretazione} \\
+        \midrule
+        0--6   & \texttt{57 61 6c 6b 48 4e 47} & \texttt{"WalkHNG"} \\
+        \midrule
+        8, 16  & \texttt{00} & padding \\
+        \midrule
+        28--31 & \texttt{bf fd d1 1c} & fine magic \\
+        \bottomrule
+        \end{tabular}
+        \caption{Decodifica dei vincoli sul buffer letto da \texttt{f\_read}.}
+        \label{tab:magic-constraints}
+        \end{table}
+    \FloatBarrier

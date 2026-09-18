@@ -94,15 +94,6 @@ cfg = proj.analyses.CFGFast()
 
 state.memory.store(0x20000000, b'\x00' * 0x20000)
 
-#simulazione 1MB di flash
-state.memory.store(0x1fff75e0, 0x0400, size=2, endness='Iend_LE')
-
-file_size = claripy.BVS("size", 32)
-state.globals['file_size'] = file_size
-
-magic = claripy.BVS("magic_sig", 32 * 8)  
-state.globals['magic'] = magic
-
 state.inspect.b('mem_write', mem_write_address = FLASH_BASE, when=angr.BP_BEFORE, action=flash_write_handler)
 state.register_plugin('printf_log', PrintfLogger())
 
@@ -132,29 +123,7 @@ if simgr.found:
             print('=' * WIDTH)
         else:
             print()
-    
 
-    # ==================== Magic ====================
-    print_section("Magic")
-    magic_bv = s.globals.get('magic') 
-    magic_bytes = s.solver.eval(magic_bv, cast_to=bytes)
-    print(f"  Header:  {magic_bytes.hex()}")
-    print(f"  Magic:   {magic_bytes[:8]}")
-    print(f"  Body:    {magic_bytes[8:28].hex()}")  
-    print(f"  End:     {magic_bytes[28:32].hex()}")
-
-
-    # ==================== File Size ====================
-    print_section("File Size")
-    
-    fs = s.globals['file_size']
-    curr = s.solver.eval(fs)
-    min_val = s.solver.min(fs)
-    max_val = s.solver.max(fs)
-    
-    print(f"{curr} Bytes")
-    print(f"Min: {min_val} Bytes")
-    print(f"Max: {max_val} Bytes")
 
     # ==================== Constraints ====================
     
@@ -187,4 +156,7 @@ if simgr.found:
 
     for i, msg in enumerate(logs):
         print(f"  [{i}] {msg.strip()}")
+        
+    # ==================== Footer ====================
+    print(f"\n{'='*WIDTH}\n")
 
