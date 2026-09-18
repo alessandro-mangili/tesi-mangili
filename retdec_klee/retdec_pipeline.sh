@@ -10,5 +10,6 @@ retdec-decompiler \
   -a thumb -e little -m raw \
   --raw-entry-point 0x08001e34 \
   --raw-section-vma 0x08000000 \
+  --no-memory-limit \
   "$INPUT"/fw_256k.bin
 

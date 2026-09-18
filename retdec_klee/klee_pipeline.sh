@@ -5,6 +5,8 @@ INPUT="$(pwd)/input"
 OUTPUT="$(pwd)/output"
 WRAPPERS="$(pwd)/wrappers"
 
+mkdir $OUTPUT
+
 echo "[1] Pulizia IR..."
 grep -v 'uselistorder' "$INPUT"/fw_256k.bin.ll > "$INPUT"/fw_step1.ll
 
