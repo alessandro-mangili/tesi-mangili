@@ -1,0 +1,16 @@
+\begin{table}[H]
+        \centering
+        \small
+        \begin{tabular}{c c c}
+        \toprule
+        \textbf{\texttt{\_flash\_size\_data\_register}} & \textbf{available (atteso)} & \textbf{\texttt{filinfo.fsize} massimo ammesso} \\
+        \midrule
+        \texttt{0x0000} (non inizializzato) & underflow & \texttt{0xffff2000} ($\sim$4\,GB) \\
+        \midrule
+        \texttt{0x0400} (1024\,KB reali) & $\sim$968\,KiB & \texttt{991231} byte ($\sim$968\,KiB) \\
+        \bottomrule
+        \end{tabular}
+        \caption{Limite superiore di \texttt{filinfo.fsize} ammesso dal solver, in funzione del valore di \texttt{\_flash\_size\_data\_register}.}
+        \label{tab:underflow}
+        \end{table}
+        \FloatBarrier

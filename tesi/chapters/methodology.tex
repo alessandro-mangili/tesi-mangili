@@ -1,7 +1,9 @@
 \chapter{Metodologia}
+    \label{chap:metodologia}
         \section{Approccio RetDec + KLEE}
-            
+            \label{subsec:retdec+klee}
             \subsection{Pipeline di decompilazione}
+            \label{subsec:pipeline_decompilazione}
                 Per poter applicare KLEE al firmware del Walk400h è stato necessario ottenere una rappresentazione in LLVM IR, formato su cui l'engine di symbolic execution opera nativamente. A tale scopo, il binario raw estratto ed analizzato nel punto 4.2 è stato passato in input a RetDec con i parametri architetturali individuati in fase di reverse engineering (modalitá THUMB, entry point e indirizzo di caricamento), ottenendo come output il bitcode LLVM corrispondente.
     
                 Poichè RetDec non riusciva a completare la decompilazione dell'intero file binario del firmware -- la cui dimensione originale è di 1 MB --, sono stati estratti solo i primi 256 KB. Questa strategia è giustificata dal layout standard della memoria flash ARM Cortex-M e verificata tramite l'analisi con Ghidra:
@@ -16,7 +18,7 @@
                 \bashfile{../retdec_klee/retdec_pipeline.sh}
 
                 \subsection{Costruzione del modulo eseguibile}
-                
+                \label{subsec:costruzione_modulo_eseguibile}
                 Il bitcode prodotto da RetDec non è direttamente eseguibile da KLEE: 
                 il suo utilizzo ha richiesto la risoluzione di una serie di 
                 incompatibilità strutturali, riassunte in 
@@ -29,33 +31,12 @@
             \cfile{../retdec_klee/wrappers/wrapper.c}
             
             \subsection{Stub delle periferiche e simbolizzazione mirata}
-                Oltre ai conflitti strutturali descritti in Sezione~5.1.2, l'esecuzione 
+            \label{subsec:stub_periferiche_klee}
+                Oltre ai conflitti strutturali descritti in \Cref{subsec:costruzione_modulo_eseguibile}, l'esecuzione 
                 simbolica ha incontrato limitazioni legate all'assenza di un modello 
                 per le periferiche hardware e alla gestione delle variabili locali, 
                 riassunte in Tabella~\ref{tab:klee-stub}.
-                \am{Ti consiglio di mettere le tabelle in file a parte, vedi quella sopra}
-                \begin{table}[h]
-                \centering
-                \small
-                \begin{tabular}{p{3.2cm} p{4.5cm} p{4.8cm}}
-                \toprule
-                \textbf{Problema} & \textbf{Sintomo} & \textbf{Soluzione} \\
-                \midrule
-                Accessi hardware non modellabili & 
-                \texttt{KLEE: ERROR: invalid pointer: klee\_make\_symbolic} su registri 
-                MMIO & 
-                Sanitizzazione del bitcode: sostituzione dei \texttt{load} da 
-                indirizzi hardware e rimozione delle \texttt{store} corrispondenti \\
-                \midrule
-                Variabile locale passata per riferimento & 
-                \texttt{Wrong size given to klee\_make\_symbolic} & 
-                Sostituzione, a livello di LLVM IR, del riferimento allo stack con una 
-                variabile globale dedicata (buffer \texttt{magic}) \\
-                \bottomrule
-                \end{tabular}
-                \caption{Problemi riscontrati nella simbolizzazione degli input e relative soluzioni.}
-                \label{tab:klee-stub}
-            \end{table}
+                \input{tesi/tables/klee_problems_stubs}
             Un vincolo più generale di KLEE, riscontrato nel tentativo di 
             simbolizzare direttamente il buffer di destinazione all'interno dello 
             stub di \texttt{f\_read}, riguarda l'impossibilità di rendere simbolici 
@@ -89,136 +70,169 @@ dec_label_pc_8007c14:
    \FloatBarrier
         
         \section{Approccio Angr}
-        \subsection{Configurazione del progetto ed esecuzione Blind}
+        
+        \subsection{Configurazione del progetto ed esecuzione 
+        Blind}
+        \label{subsec:esecuzione_blind_config}
         Il progetto Angr è stato configurato specificando l'architettura (\texttt{ARMCortexM}), l'indirizzo di caricamento (\texttt{0x08000000}) e l'entry point del bootloader individuato nella \Cref{subsec:firmware_re}, con il bit THUMB abilitato.
         
         \pythonfile{../angr/blind_exploration.py}
         
         Un primo tentativo ha adottato un'esecuzione simbolica ``blind'', priva di un target specifico: l'esplorazione avanza istruzione per istruzione su tutti i percorsi raggiungibili, terminando quando non restano piú stati attivi. Questo approccio si è rivelato inefficiente, poichè l'assenza di un obiettivo non consente di indirizzare l'esplorazione verso le funzioni di interesse.
 
-        \am{Secondo me qui sotto sarebbe buona cosa far vedere dove si ferma}
-        Oltre all'inefficienza, l'esecuzione blind si arresta dopo poche istruzioni: l'analisi dello stato mostra che il flusso rimane bloccato all'interno di cicli di attesa legati all'inizializzazione delle periferiche hardware, cicli che in 
-        ambiente simbolico non terminano mai poichè i registri hardware non vengono aggiornati da un controllore fisico esterno. Per questo problema sono state valutate due soluzioni:
+    
+        Dopo un certo numero di istruzioni, l'esecuzione risulta bloccata in un ciclo
+        attorno all'indirizzo \texttt{0x08003165} (l'esecuzione oscilla tra più
+        indirizzi vicini, riconducibili allo stesso ciclo).
+        \begin{bashcode}
+[analysis] /workspace/angr \$ python3 blind_exploration.py 
+simgr: <SimulationManager with 1 active>, active: [<SimState @ 0x8003165>], errored: [], deadneded: []
+        \end{bashcode}
+        
+
+        Oltre all'inefficienza, l'esecuzione blind si arresta dopo poche istruzioni: l'analisi dello stato mostra che il flusso rimane bloccato all'interno di cicli di attesa legati all'inizializzazione delle periferiche hardware, cicli che in ambiente simbolico non terminano mai poichè i registri hardware non vengono aggiornati da un controllore fisico esterno. Per questo problema sono state valutate due soluzioni:
         \begin{itemize}
             \item Modellazione simbolica delle periferiche: rendere simboliche zone di memoria MMIO, permettendo ad Angr di esplorare tutti i possibili stati dei registri
             \item Stub delle funzioni bloccanti: Sostituzione delle funzioni che dipendono dai cicli di attesa hardware 
 con procedure che restituiscono immediatamente un valore fisso
         \end{itemize}
 
-        \subsection{Intercettazione UART}
-        Nell'ambito dell'esecuzione blind è stata inoltre condotta la cattura dei messaggi di debug a livello di registro, allo scopo di identificare quale periferica seriale fosse effettivamente utilizzata dal firmware. A partire dagli indirizzi delle periferiche USART/UART riportati nel datasheet del microcontrollore, sono stati impostati dei breakpoint di memoria sui rispettivi registri \textbf{TDR} (Transmit Data Register, ovvero a un offset di +0x28 rispetto all'indirizzo base di ciascuna periferica). 
+\subsection{Stub per l'esplorazione}
+\label{subsec:stub_angr_esplorazione}
 
-        Come anticipato nella sezione 5.2.1, l'esecuzione simbolica ``blind'' non riesce a superare nemmeno l'inizializzazione delle periferiche hardware, rimanendo bloccata in dei cicli. È stato quindi necessario applicare alle funzioni bloccanti degli stub per permettere l'avanzamento dell'esecuzione. Questo è stato possibile tramite l'analisi del decompilato su Ghidra, dimostrando come un approccio totalmente ``blind'' sia impraticabile.
-        \newline
-        Il codice sottostante è quello relativo alla cattura UART; sono 
-        riportate solamente le parti aggiuntive rispetto al codice base 
-        dell'esecuzione blind già mostrato in Sezione 5.2.1.
-        \inputminted[
-            frame=single,
-            linenos,
-            breaklines,
-            bgcolor=gray!10,
-            firstline=1,
-            lastline=30,
-            firstnumber=1
-        ]{python}{../angr/USART.py}
+Come anticipato in \Cref{subsec:esecuzione_blind_config}, l'esecuzione 
+simbolica ``blind'' non riesce a superare l'inizializzazione delle 
+periferiche hardware, rimanendo bloccata in cicli di polling su registri 
+non vincolati. Per procedere oltre queste fasi è stato quindi necessario 
+introdurre degli \textbf{stub}: l'individuazione delle funzioni bloccanti 
+ha richiesto l'analisi manuale del codice decompilato su Ghidra, mentre 
+l'alternativa di rendere simbolica l'intera memoria delle periferiche è 
+stata scartata per l'esplosione di stati che ne sarebbe derivata. Questo 
+conferma come un approccio totalmente ``blind'' sia di fatto inapplicabile.
+
+Per ridurre il numero di stati simbolici da esplorare e guidare 
+l'esecuzione verso il flusso di aggiornamento del firmware, sono stati 
+introdotti stub di due tipologie:
+\begin{itemize}
+    \item \textbf{Stub di funzioni irrilevanti}: sostituiscono con 
+    un'istruzione vuota (\textbf{DoNothing}) le funzioni che non influenzano 
+    il flusso di aggiornamento del firmware, ma la cui esecuzione 
+    introdurrebbe stati superflui, come routine di inizializzazione.
+    \item \textbf{Stub che ritornano un valore fisso}: sostituiscono 
+    funzioni il cui esito è necessario per proseguire lungo il percorso di 
+    interesse, forzando il valore di ritorno anzichè eseguire la logica 
+    reale - ad esempio \texttt{check\_sd\_card}, per garantire che la 
+    scheda SD risulti sempre presente, o le funzioni HAL di gestione della 
+    Flash (\texttt{HAL\_FLASH\_Unlock}, \texttt{HAL\_FLASHEx\_Erase}), le 
+    cui operazioni sulla memoria fisica non sono riproducibili in ambiente 
+    simbolico.
+\end{itemize}
+
+\subsection{Intercettazione UART}
+\label{subsec:intercettazione_uart}
+
+Nell'ambito dell'esecuzione blind è stata inoltre condotta la cattura dei 
+messaggi di debug a livello di registro, allo scopo di identificare quale 
+periferica seriale fosse effettivamente utilizzata dal firmware. A partire 
+dagli indirizzi delle periferiche USART/UART riportati nel datasheet del 
+microcontrollore, sono stati impostati dei breakpoint di memoria sui 
+rispettivi registri \textbf{TDR} (Transmit Data Register, ovvero a un 
+offset di +0x28 rispetto all'indirizzo base di ciascuna periferica).
+
+Come discusso in \Cref{subsec:stub_angr_esplorazione}, anche in questo caso 
+è stato necessario applicare gli stub già individuati per permettere 
+all'esecuzione di avanzare.
+\newline
+Il codice sottostante è quello relativo alla cattura UART; sono 
+riportate solamente le parti aggiuntive rispetto al codice base 
+dell'esecuzione blind già mostrato in \Cref{subsec:esecuzione_blind_config}.
+
+\pythonfile[firstline=1, lastline=30, firstnumber=1]{../angr/USART.py}
+
+\pythonfile[firstline=46, lastline=59, firstnumber=46]{../angr/USART.py}
+
+Output:
+
+\begin{bashcode}
+simgr: <SimulationManager with 1 active>, active: [<SimState @ 0x80054e1>], errored: [], deadneded: [] 0x40004828 -> W
+simgr: <SimulationManager with 1 active>, active: [<SimState @ 0x80054e1>], errored: [], deadneded: [] 0x40004828 -> a
+simgr: <SimulationManager with 1 active>, active: [<SimState @ 0x80054e1>], errored: [], deadneded: [] 0x40004828 -> l
+[...]
+simgr: <SimulationManager with 1 active>, active: [<SimState @ 0x80054e1>], errored: [], deadneded: [] 0x40004828 -> 0
+simgr: <SimulationManager with 1 active>, active: [<SimState @ 0x80054e1>], errored: [], deadneded: [] 0x40004828 -> 6
+\end{bashcode}
+
+L'intercettazione a livello di registro si è rivelata funzionante - il 
+breakpoint sui registri TDR ha permesso di identificare USART3 come 
+periferica di logging - ma computazionalmente onerosa: il tempo di 
+esecuzione cresce rapidamente all'aumentare del numero di stati simbolici 
+attivi, rendendola poco praticabile su esplorazioni più estese. A questo 
+scopo, nelle analisi successive, si è preferito adottare la cattura dei 
+messaggi di debug con un meccanismo basato su hooking della funzione 
+\texttt{printf}, meno oneroso in termini prestazionali.
+
+Oltre all'hooking, è stato aggiunto un meccanismo di logging dei messaggi 
+di debug: questo meccanismo utilizza la funzionalitá dei \texttt{plugin} di 
+Angr. I plugin sono delle estensioni dello stato che permettono di 
+memorizzare dati custom durante l'esecuzione simbolica e vengono 
+automaticamente duplicati quando si forka lo stato, garantendo che ogni 
+branch mantenga la propria copia indipendente dei messaggi.
+È possibile registrare un nuovo plugin attraverso il comando:
+
+\begin{pythoncode}
+state.register_plugin('printf_log', PrintfLogger())
+\end{pythoncode}
+
+La classe \texttt{HookPrintf} si occupa dell'hooking della funzione 
+\texttt{printf} e svolge i seguenti compiti:
+
+\begin{itemize}[noitemsep]
+    \item intercetta le chiamate a \texttt{printf} durante l'esecuzione simbolica;
+    \item estrae la format string e i primi tre argomenti, letti dai 
+    registri \texttt{r1}, \texttt{r2} e \texttt{r3} secondo la calling 
+    convention ARM;
+    \item gestisce i format specifier più comuni (\texttt{\%s}, 
+    \texttt{\%d}, \texttt{\%u}, \texttt{\%x});
+    \item nel caso di \texttt{\%x}, converte il valore in carattere 
+    ASCII se stampabile, altrimenti lo riporta in formato esadecimale;
+    \item salva il messaggio formattato nel plugin \texttt{PrintfLogger}.
+\end{itemize}
+
     
-        \inputminted[
-            frame=single,
-            linenos,
-            breaklines,
-            bgcolor=gray!10,
-            firstline=46,
-            lastline=59,
-            firstnumber=46
-        ]{python}{../angr/USART.py}
-
-    Output:
-
-    \begin{minted}[frame=single, breaklines, bgcolor=gray!10, fontsize=\footnotesize]{text}
-        simgr: <SimulationManager with 1 active>, active: [<SimState @ 0x80054e1>], errored: [], deadneded: [] 0x40004828 -> W
-        simgr: <SimulationManager with 1 active>, active: [<SimState @ 0x80054e1>], errored: [], deadneded: [] 0x40004828 -> a
-        simgr: <SimulationManager with 1 active>, active: [<SimState @ 0x80054e1>], errored: [], deadneded: [] 0x40004828 -> l
-        [...]
-        simgr: <SimulationManager with 1 active>, active: [<SimState @ 0x80054e1>], errored: [], deadneded: [] 0x40004828 -> 0
-        simgr: <SimulationManager with 1 active>, active: [<SimState @ 0x80054e1>], errored: [], deadneded: [] 0x40004828 -> 6
-    \end{minted}
-
-    \am{Ho visto che c 'è la sezione 5.2.3 per gli stub. Mettila prima di questa e menziona il problema (quindi funzioni che si bloccano, degli stub, che per capire dove metterli hai bisogno di una qualche analisi altrimenti devi mettere tutta la memoria simbolica, ecc) una sola volta così evitiamo di ripeterlo}
-    L'intercettazione a livello di registro si è rivelata funzionante - il breakpoint sui registri TDR ha permesso di identificare USART3 come periferica di logging - ma computazionalmente onerosa: il tempo di esecuzione cresce rapidamente all'aumentare del numero di stati simbolici attivi rendendolo poco praticabile su esplorazioni più estese. A questo scopo, nelle analisi successive, si è preferito adottare la cattura dei messaggi di debug con un meccanismo basato su hooking della funzione \texttt{printf}, meno oneroso in termini prestazionali.
-
-    Oltre all'hooking, è stato aggiunto un meccanismo di logging dei messaggi di debug: questo meccanismo utilizza la funzionalitá dei \texttt{plugin} di Angr. I plugin sono delle estensioni dello stato che permettono di memorizzare dati custom durante l'esecuzione simbolica e vengono automaticamente duplicati quando si forka lo stato, garantendo che ogni branch mantenga la propria copia indipendente dei messaggi.
-    È possibile registrare un nuovo plugin attraverso il comando:
-    \begin{minted}[frame=single, breaklines, bgcolor=gray!10, fontsize=\footnotesize]{python}
-        state.register_plugin('printf_log', PrintfLogger())
-    \end{minted}
-
-    La classe \texttt{HookPrintf} si occupa dell'hooking della funzione 
-    \texttt{printf} e svolge i seguenti compiti:
-    
-    \begin{itemize}[noitemsep]
-        \item intercetta le chiamate a \texttt{printf} durante l'esecuzione simbolica;
-        \item estrae la format string e i primi tre argomenti, letti dai 
-        registri \texttt{r1}, \texttt{r2} e \texttt{r3} secondo la calling 
-        convention ARM;
-        \item gestisce i format specifier più comuni (\texttt{\%s}, 
-        \texttt{\%d}, \texttt{\%u}, \texttt{\%x});
-        \item nel caso di \texttt{\%x}, converte il valore in carattere 
-        ASCII se stampabile, altrimenti lo riporta in formato esadecimale;
-        \item salva il messaggio formattato nel plugin \texttt{PrintfLogger}.
-    \end{itemize}
-
-    \subsection{Stub per l'esplorazione}
-    Per ridurre il numero di stati simbolici da esplorare e guidare l'esecuzione verso il flusso di aggiornamento del firmware, sono stati introdotti stub di due tipologie:
-    \begin{itemize}
-        \item \textbf{Stub di funzioni rilevanti o che restituiscono valore fisso}: sostituiscono con un'istruzione vuota (\textbf{DoNothing}) le funzioni che non influenzano il flusso di aggiornamento del firmware, ma la cui esecuzione introdurrebbe stati superflui, come routine di inizializzazione.
-        \item \textbf{Stub che ritornano un valore fisso}: sostituiscono funzioni il cui esito è necessario per proseguire lungo il percorso di interesse, forzando il valore di ritorno anzichè eseguire la logica reale - ad esempio \texttt{check\_sd\_card}, per garantire che la scheda SD risulti 
-        sempre presente o le funzioni HAL di gestione della Flash 
-        (\texttt{HAL\_FLASH\_Unlock}, \texttt{HAL\_FLASHEx\_Erase}), le cui 
-        operazioni sulla memoria fisica non sono riproducibili in ambiente 
-        simbolico.
-    \end{itemize}
     
     
     \subsection{Modellazione di FatFS}
-    \am{Forse metterei giusto una frase per dire che adesso vogliamo modellare la parte di aggiornamento quindi ci servono le funzioni per leggere il FS}
-        Le funzioni di libreria FATFS operano su strutture dati con un layout preciso (\texttt{FIL}, \texttt{FILINFO}), i cui campi vengono letti e scritti dal firmware in punti diversi del flusso di validazione. Per poter riferire questi campi per nome anzichè calcolarne manualmente l'offset in memoria, le definizioni di questo tipo di FatFS sono state registrate in Angr tramite \texttt{Angr.types.register\_types}, fornendo un equivalente dei \textbf{typedef} originali.
+    \label{subsec:modellazione_fatfs}
+    Per modellare correttamente il flusso di aggiornamento del firmware è necessario poter interagire con le funzioni che accedono al filesystem sulla SD Card, in particolare con le strutture dati che queste manipolano. Le funzioni di libreria FatFS operano infatti su strutture dati con un layout preciso (\texttt{FIL}, \texttt{FILINFO}), i cui campi vengono letti e scritti dal firmware in punti diversi del flusso di validazione. Per poter riferire questi campi per nome anziché calcolarne manualmente l'offset in memoria, le definizioni di questo tipo di FatFS sono state registrate in angr tramite \texttt{angr.types.register\_types}, fornendo un equivalente dei typedef
+originali.
 
-        \inputminted[
-            frame=single,
-            linenos,
-            breaklines,
-            bgcolor=gray!10,
-            firstline=4,
-            lastline=45,
-            firstnumber=4
-        ]{python}{../angr/moduli/boot_hook.py}
+        \pythonfile[firstline=4, lastline=45, firstnumber=4]{../angr/moduli/boot_hook.py}
 
         Su questa base sono stati poi implementati gli hook \texttt{HookFRead} e \texttt{HookFStat}, che costituiscono l'esecuzione reale delle rispettive funzioni FatFS.
 
-        \begin{minted}[frame=single, breaklines, bgcolor=gray!10, fontsize=\footnotesize]{python}
-    class HookFRead(Angr.SimProcedure):
-        def run(self, fil, buf, count, read_ptr):
-            ret_addr = hex(self.state.callstack.ret_addr)
-            position = self.state.solver.eval(self.state.mem[fil].FIL.fptr.resolved)
-            real_count = self.state.solver.eval(count)
+        \begin{pythoncode}[fontsize=\footnotesize]
+class HookFRead(Angr.SimProcedure):
+    def run(self, fil, buf, count, read_ptr):
+        ret_addr = hex(self.state.callstack.ret_addr)
+        position = self.state.solver.eval(self.state.mem[fil].FIL.fptr.resolved)
+        real_count = self.state.solver.eval(count)
                     
-            fill_info_obj = claripy.BVS(f'f_read_{hex(position)}_{hex(real_count)}_{ret_addr}', real_count * self.state.arch.bits)
-            self.state.memory.store(buf, fill_info_obj, real_count, disable_actions=True, inspect=False)
-            self.state.memory.store(read_ptr, real_count, 4, disable_actions=True, inspect=False)
+        fill_info_obj = claripy.BVS(f'f_read_{hex(position)}_{hex(real_count)}_{ret_addr}', real_count * self.state.arch.bits)
+        self.state.memory.store(buf, fill_info_obj, real_count, disable_actions=True, inspect=False)
+        self.state.memory.store(read_ptr, real_count, 4, disable_actions=True, inspect=False)
             
-            self.state.mem[fil].FIL.fptr = position + real_count
+        self.state.mem[fil].FIL.fptr = position + real_count
                         
-            return 0 
+        return 0 
             
-    class HookFStat(Angr.SimProcedure):
-        def run(self, file_path, fill_info):
-            size = self.state.mem.FILINFO._type.size // 8
-            ret_addr = hex(self.state.callstack.ret_addr)
-            fill_info_obj = claripy.BVS(f'f_stat_{file_path}_{ret_addr}', size * self.state.arch.bits)
-            self.state.memory.store(fill_info, fill_info_obj, size, disable_actions=True, inspect=False)            
-            return 0
-        \end{minted}        
+class HookFStat(Angr.SimProcedure):
+    def run(self, file_path, fill_info):
+        size = self.state.mem.FILINFO._type.size // 8
+        ret_addr = hex(self.state.callstack.ret_addr)
+        fill_info_obj = claripy.BVS(f'f_stat_{file_path}_{ret_addr}', size * self.state.arch.bits)
+        self.state.memory.store(fill_info, fill_info_obj, size, disable_actions=True, inspect=False)            
+        return 0
+        \end{pythoncode}        
 
         \begin{itemize}[noitemsep]
             \item \texttt{HookFRead} non modella l'accesso reale al filesystem 
@@ -236,7 +250,7 @@ con procedure che restituiscono immediatamente un valore fisso
         Questo approccio permette al solver di determinare automaticamente quali valori concreti di questi campi soddisfano i vincoli imposti dalla logica di validazione del firmware.
         
     \subsection{Esplorazione percorsi}
-        
+        \label{subsec:esplorazione_percorsi}
         Per rendere l'esplorazione mirata anzichè esaustiva, è stata adottata 
         la funzione \texttt{simgr.explore()} di Angr, configurabile tramite tre 
         parametri principali:
@@ -257,38 +271,25 @@ con procedure che restituiscono immediatamente un valore fisso
         corrispondente all'avvio dell'applicativo principale: questo evita che 
         l'esecuzione prosegua oltre il bootloader una volta completato il flusso 
         di aggiornamento.
-        
-        \inputminted[
-            frame=single,
-            linenos,
-            breaklines,
-            bgcolor=gray!10,
-            firstline=94,
+        \pythonfile[firstline=94,
             lastline=101,
-            firstnumber=94
-        ]{python}{../angr/boot_main_exploration.py}
+            firstnumber=94]{../angr/boot_main_exploration.py}
         
         L'esplorazione condivide con l'esecuzione blind gli stub per le funzioni 
-        di inizializzazione e utilizza l'hook di \texttt{printf} descritto in 
-        Sezione~5.2.2. A questi si aggiungono gli stub mirati a guidare il 
+        di inizializzazione e utilizza l'hook di \texttt{printf} descritto in~\Cref{subsec:intercettazione_uart}. A questi si aggiungono gli stub mirati a guidare il 
         flusso di esecuzione verso \texttt{walk\_update\_flash}, insieme agli 
-        hook per la modellazione di FatFS descritti in Sezione~5.2.4. In questo 
+        hook per la modellazione di FatFS descritti in~\Cref{subsec:modellazione_fatfs}. In questo 
         modo, se l'esplorazione raggiunge il target, il solver di Angr può 
         essere interrogato per determinare quali valori delle variabili rese 
         simboliche soddisfano i vincoli imposti dalla funzione 
         \texttt{walk\_check\_update\_file}.
 
     \subsection{Breakpoint in memoria}
+    \label{subsec:breakpoint_memoria}
         Il secondo approccio target-oriented adottato è basato su un breakpoint in memoria e condivide gran parte della struttura con il metodo precentente: la configurazione del progetto, gli stub e la modellazione di FatFS restano invariati. La differenza risiede nel criterio con cui l'esplorazione viene considerata conclusa.
 
         Mentre l'esplorazione termina quando si raggiunge un determinato indirizzo, l'approccio a breakpoint termina quando si verifica quando viene rilevata una scrittura nella regione di Flash riservata all'applicazione. A tale scopo viene registrato un breakpoint di inspection sull'evento di scrittura in memoria, filtrato sull'indirizzo di tale regione (\texttt{FLASH\_BASE}, \texttt{0x0800e000}); alla prima scrittura rilevata, il relativo handler imposta un flah nello stato corrente, che diventa la condizione di terminazione passata a \texttt{simgr.explore()}.
 
-        \inputminted[
-            frame=single,
-            linenos,
-            breaklines,
-            bgcolor=gray!10,
-            firstline=97,
+        \pythonfile[firstline=97,
             lastline=106,
-            firstnumber=97
-        ]{python}{../angr/boot_main_memory_hooks.py}
+            firstnumber=97]{../angr/boot_main_memory_hooks.py}

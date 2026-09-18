@@ -1,4 +1,5 @@
 \chapter{Dispostivo Walk400h}
+\label{chap:Dispostivo_Walk400h}
     \section{Caratteristiche}
     \begin{figure}[htbp]
     \centering
@@ -12,7 +13,7 @@
 
     Il Walk400h espone diversi canali di interazione con l'esterno che costituiscono, da un punto di vista della sicurezza, altrettante superfici di attacco potenziali: l'interfaccia \textbf{USB} per il trasferimento dei dati registrati verso il software di analisi, un'interfaccia \textbf{seriale UART} utilizzata per il logging interno e il meccanismo di aggiornamento basato su \textbf{scheda SD}, quest'ultimo di particolare interesse in quanto rappresenta il principale punto di ingresso di input non fidati nel sistema.
 
-    \section{Reverse Engeneering del firmware}
+    \section{Reverse Engineering del firmware}
     \label{subsec:firmware_re}
     Il lavoro di reverse engineering del bootloader del Walk400h è stato condotto da Alberici \cite{alberici26}, il quale ha ricostruito la struttura del firmware del dispositivo e ne ha identificato la procedura di aggiornamento. In particolare, tale analisi ha evidenziato come questa procedura non implementi controlli adeguati sull'origine e sull'integrità del nuovo firmware caricato sul dispositivo, aprendo così a un potenziale vettore di attacco per l'esecuzione di codice non autorizzato. Il passo preliminare necessario a questo scopo è stata la ricostruzione dettagliata della struttura del bootloader del Walk400h, volta in particolare a individuare, all'interno del flusso di esecuzione, tutte le componenti del firmware legate al meccanismo di aggiornamento — così da delimitare con precisione le porzioni di codice da sottoporre successivamente a symbolic execution.
 
@@ -32,6 +33,7 @@
         Questi parametri sono stati successivamente riutilizzati come parametri per la fase di decompilazione tramite RetDec, necessaria per produrre una rappresentazione LLVM IR del bootloader analizzabile da KLEE.
 
     \section{Funzioni critiche identificate}
+    \label{subsec:funzioni_critiche}
         A partire dall'entry point, l'analisi del flusso di controllo ha permesso di ricostruire la logica principale del bootloader e di isolare un sottoinsieme di funzioni ritenute critiche per la sicurezza del dispositivo, in quanto ritenute responsabili della gestione dell'aggiornamento firmware e dell'accesso alla SD Card.
 
         \begin{figure}[H]
@@ -81,6 +83,7 @@
         \end{description}
     
     \section{Meccanismi di monitoraggio implementati}
+    \label{subsec:meccanismi_di_monitoraggio}
         Nell'ottica di validare i risultati dell'analisi statica condotta in questa sezione e descritta nel lavoro di Alberici~\cite{alberici26}, e per supportare la successiva esplorazione simbolica del medesimo percorso con gli strumenti di analisi utilizzati, sono stati implementati due meccanismi di osservabilità del comportamento del firmware: il primo consente di monitorare i messaggi stampati via UART, il secondo di rilevare le scritture sulla periferica di memoria Flash. Entrambi i meccanismi sono descritti in seguito.
 
         \paragraph{Cattura dei messaggi UART}

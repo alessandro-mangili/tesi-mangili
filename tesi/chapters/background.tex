@@ -1,7 +1,9 @@
 \chapter{Background}
+\label{chap:background}
 \section{Symbolic Execution}
+\label{subsec:symbolic_execution}
 \subsection{Introduzione alla Symbolic Execution}
-
+\label{subsec:intro_symbolic_execution}
 La symbolic execution è una tecnica di analisi dei programmi ibrida tra analisi statica e dinamica introdotta a metà degli anni '70,
 con l'obiettivo di verificare se determinate proprietà potessero essere violate da porzioni di codice. Gli
 aspetti di interesse tipici includono l'esecuzione di divisioni per zero, la dereferenziazione di puntatori
@@ -90,7 +92,7 @@ La simulazione di un certo programma è quindi affidata a un motore di esecuzion
 \end{itemize}
 
 \subsection{Fondamenti Teorici}
-
+\label{subsec:fondamenti_teorici}
 I concetti introdotti informalmente nell'esempio precedente possono ora essere
 formalizzati. La loro definizione segue un ordine logico preciso: lo stato descrive
 cosa il motore di esecuzione mantiene in ogni istante; le path condition descrivono
@@ -137,7 +139,7 @@ rappresenta la transizione da uno stato al successivo, mentre i nodi foglia corr
 a stati terminali: percorsi completati, errori rilevati o rami scartati~\cite{Cadar_sym_ex_survey}.
 
 \subsection{Sfide e Limitazioni}
-
+\label{subsec:sfide_e_limitazioni}
 La symbolic execution, pur essendo uno strumento potente per l'analisi automatica del software non è
 esente da problemi. Le principali sfide sono:
 
@@ -154,8 +156,26 @@ esente da problemi. Le principali sfide sono:
     \item \textbf{Dipendenza dall'architettura target.} L'engine deve riprodurre fedelmente la semantica dell'architettura su cui il programma è destinato ad essere eseguito (set di istruzioni, convenzioni di chiamata, endianness), che può differire significativamente da quella della macchina su cui l'analisi viene effettuata (ad esempio ARM rispetto a x86). Un modello architetturale impreciso o un disallineamento tra le due piattaforme puó introdurre comportamento non rappresentativi del programma reale, o addirittura impedire l'esecuzione.
 \end{enumerate}
 
-\subsection{Tecniche per Mitigare le Limitazioni}
+    Queste sfide, per quanto formulate qui in termini generali, non pesano allo stesso 
+    modo su ogni classe di software. Nel contesto dei sistemi embedded e dei dispositivi 
+    IoT, in particolare, alcune di esse risultano sistematicamente aggravate: l'assenza 
+    di un sistema operativo completo espone direttamente il codice applicativo alle 
+    periferiche hardware, rendendo l'interazione con l'ambiente esterno (punto 3) non 
+    un caso limite ma la norma; allo stesso modo, l'assenza pressoché costante di 
+    documentazione pubblica su tali periferiche e sul layout di memoria del dispositivo 
+    rende il memory modeling (punto 4) e la fedeltà al modello architetturale (punto 5) 
+    ostacoli da affrontare fin dalle prime fasi dell'analisi. Questa combinazione di fattori è discussa in dettaglio 
+    da Qasem et al.~\cite{qasem2021survey}, che nella loro survey distinguono 
+    esplicitamente le sfide generiche dell'analisi binaria da quelle proprie del 
+    dominio embedded, individuando proprio nella scarsità di informazioni 
+    sull'hardware sottostante e nei vincoli di risorse computazionali i fattori che 
+    più limitano l'applicabilità diretta delle tecniche di symbolic execution 
+    sviluppate per il software general-purpose. Nei capitoli successivi si vedrà come 
+    queste difficoltà si siano concretamente manifestate nell'analisi del firmware 
+    oggetto di questa tesi.
 
+\subsection{Tecniche per Mitigare le Limitazioni}
+\label{subsec:tecniche_per_mitigare_le_limitazioni}
 \begin{enumerate}
     \item \textbf{Concolic Execution.} La concolic execution è una tecnica che combina l'esecuzione concreta con quella simbolica. Questa tecnica mira a limitare il problema della path explosion, vincolando ogni singola esecuzione a un unico percorso concreto anziché forzare l'esplorazione simultanea di più stati in memoria. Un impiego rilevante di questo paradigma consiste nell'usarlo per modellare l'ambiente esterno al programma — per esempio delle periferiche hardware — quando questo risulta troppo complesso o indocumentato per essere rappresentato simbolicamente, delegando all'esecuzione concreta le porzioni di sistema più difficili da modellare \cite{chipounov2011s2e}. Tuttavia, a differenza delle tecniche simboliche che esplorano più cammini simultaneamente condividendo lo stato in memoria, la concolic execution richiede una riesecuzione completa del programma per ogni nuovo percorso da analizzare: un costo che, se l'ambiente concretamente eseguito è un dispositivo fisico reale anziché un modello software, si moltiplica per il numero di cammini esplorati, potendo rendere questa tecnica più onerosa della sola symbolic execution \cite{cha2012mayhem}.
     
@@ -163,19 +183,20 @@ esente da problemi. Le principali sfide sono:
     \item \textbf{State Pruning.} Il state pruning rileva gli stati simbolici già analizzati in precedenza e li scarta prima che vengano rieseguiti. Due stati sono considerati equivalenti se condividono lo stesso program counter e gli stessi valori per tutte le variabili simboliche. Questa tecnica è particolarmente efficace in presenza di loop e interrupt-driven code, come dimostrato da FIE, dove il pruning ha aumentato di sei volte il numero di analisi completate rispetto alla modalità senza ottimizzazioni~\cite{davidson2013fie}.
 \end{enumerate}
 
-\am{Te lo lascio come appunto. Prova a vedere se magari qualche paper parla delle challenge specifiche dell' analisi simbolica su sistemi embedded. QUello che hai messo fino ad ora va bene ma è una view abbastanza generale della symbolic execution. Servirebbe giusto un qualcosa per collegare il caso "symbolic execution generica con quella iot"}
-
 \section{Strumenti e Tecnologie}
-In questo capitolo vengono presentati gli strumenti utilizzati nel corso del lavoro di tesi. Per la realizzazione del progetto sono stati impiegati sia strumenti specifici per il reverse engineering del firmware, sia due diversi framework per l'analisi simbolica del binario, il cui utilizzo nelle varie fasi del progetto verrà descritto in dettaglio nel Capitolo 5.
+\label{subsec:strumenti_e_tecnologie}
+In questo capitolo vengono presentati gli strumenti utilizzati nel corso del lavoro di tesi. Per la realizzazione del progetto sono stati impiegati sia strumenti specifici per il reverse engineering del firmware, sia due diversi framework per l'analisi simbolica del binario, il cui utilizzo nelle varie fasi del progetto verrà descritto in dettaglio nel  \Cref{chap:metodologia}.
 
 La fase di estrazione e ricostruzione del binario tramite reverse engineering è stata condotta in parte da un altro tesista, che ha permesso di ottenere le componenti principali del firmware del dispositivo medicale. A partire da tali risultati, il presente lavoro si è concentrato sull'applicazione di tecniche di symbolic execution al binario estratto.
 
 \subsection{Ghidra}
+\label{subsec:ghidra}
 \textit{Ghidra} è un framework di reverse engineering creato e mantenuto dalla \textbf{U.S. National Security Agency}. È uno strumento che permette a ricercatori di sicurezza, analisti di malware e sviluppatori di analizzare codice compilato per identificare e comprendere le vulnerabilità di un dato software. Ghidra supporta una grande varietà di Instruction Set provenienti da architetture differenti (ARM, MIPS, PowerPC, e altre). Offre anche una funzionalità di decompilazione per mostrare all' utente dello pseudo-codice C/C++ a partire dal codice macchina grezzo.~\cite{ghidra}
 
-Nell'ambito di questo lavoro, Ghidra è stato impiegato esclusivamente in fase di analisi statica: caricamento del binario raw, disassemblato e decompilato sono stati utilizzati per ricostruire manualmente la struttura del bootloader (\Cref{subsec:firmware_re}  \am{Ti ho messo un esempio di come si fanno i riferimenti in automatico in latex. Guarda nel capitolo 4 come mettere la label} e per identificare le funzioni critiche (Sezione 4.3).Il suo output è stato inoltre utilizzato come riferimento per valutare la fedeltà della decompilazione prodotta da RetDec (Sezione 6.1.2). Non sono state utilizzate le funzionalità di scripting o l'automazione tramite l'API Python/Java del tool.
+Nell'ambito di questo lavoro, Ghidra è stato impiegato esclusivamente in fase di analisi statica: caricamento del binario raw, disassemblato e decompilato sono stati utilizzati per ricostruire manualmente la struttura del bootloader (\Cref{subsec:firmware_re} e per identificare le funzioni critiche (Sezione 4.3).Il suo output è stato inoltre utilizzato come riferimento per valutare la fedeltà della decompilazione prodotta da RetDec (Sezione 6.1.2). Non sono state utilizzate le funzionalità di scripting o l'automazione tramite l'API Python/Java del tool.
 
 \subsection{LLVIM IR}
+\label{subsec:llvm_ir}
 LLVM IR (Intermediate Representation) è il linguaggio intermedio alla base del progetto LLVM, un framework open-source per la costruzione di compilatori e strumenti di analisi del codice. LLVM IR si colloca a un livello di astrazione intermedio tra il codice sorgente ad alto livello e il codice macchina, ed è progettato per essere sufficientemente generico da rappresentare programmi provenienti da linguaggi e architetture differenti, pur mantenendo una struttura analizzabile e trasformabile in modo sistematico \cite{llvm}.
 
 LLVM IR offre:
@@ -187,6 +208,7 @@ LLVM IR offre:
 \end{itemize}
 
 \subsection{RetDec}
+\label{subsec:retdec}
 \textit{RetDec} è un tool open-source sviluppato da Avast che si occupa della traduzione/lifting di binari a codice intermedio LLVM IR. Il nome RetDec deriva da \textbf{Retargetable Decompiler} indicando come l'obiettivo del progetto sia quello di creare un decompilatore generico di binari. Questo tool supporta un gran numero di architetture e accetta in input file di diversi formati. Poichè è basato su LLVM fa sì che non sia legato a particolari architetture, sistemi operativi o formati di file eseguibili.\cite{retdec}
 
 RetDec, oltre che da decompilatore, offre anche funzionalitá come: 
@@ -198,6 +220,7 @@ RetDec, oltre che da decompilatore, offre anche funzionalitá come:
     \item disassembler e altro.
 \end{itemize}
 \subsection{KLEE}
+\label{subsec:klee}
     \textit{Klee} è un framework di esecuzione simbolica che esplora automaticamente molteplici percorsi di esecuzione di un programma trattando gli input come valori simbolici piuttosto che concreti. Combina symbolic execution e constraint solving per generare casi di test con un alta copertura del codice e trovare bug nel software. Klee esegue LLVM Bitcode permettendogli di analizzare programmi scritti in linguaggi che compilano in LLVM IR, come C/C++. Nel caso in cui il target di analisi sia invece un binario già compilato — come nel presente lavoro di tesi — è necessario un passaggio preliminare di lifting, che ricostruisca una rappresentazione in LLVM IR a partire dal codice macchina; a tale scopo, in questo lavoro è stato impiegato RetDec (Sezione 2.2.3), il cui output in LLVM IR costituisce l'input fornito a KLEE per l'analisi simbolica.
     
     Le funzionalità principali di Klee sono:
@@ -223,6 +246,7 @@ RetDec, oltre che da decompilatore, offre anche funzionalitá come:
     KLEE mette a disposizione diversi strumenti da linea di comando: \texttt{klee} è il tool principale che prende in input LLVM bitcode  ed esegue l'analisi simbolica; \texttt{kleaver} permette di interagire direttamente con il constraint solver; \texttt{klee-stats} visualizza le statistiche dell'esecuzione e \texttt{klee-replay} 
     consente di rieseguire i test case per riprodurre i bug trovati.~\cite{klee}
 \subsection{Angr}
+\label{subsec:angr}
     \textit{Angr} è un framework open-source per l'analisi di binari, sviluppato 
     dal Computer Security Lab dell'Università della California, Santa Barbara e da 
     SEFCOM dell'Arizona State University. È implementato come una suite di librerie 

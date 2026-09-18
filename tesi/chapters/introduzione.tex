@@ -1,8 +1,7 @@
 \chapter{Introduzione}
-\am{Nota generale. Non so se è una mia impressione ma mi sembra piccolo il font rispetto alle altre tesi che vedo di solito. Non che sia un problema, stai solo attento poi per l' eventuale stampa}\\
-\am{Nota generale 2. Nella tesi ci sono pochi riferimenti (te lo dicono perchè è forse la cosa principale che solitamente le commissioni guardano). Non dico di mettere cose a caso ma magari sopratutto nella parte di background quando introduci strumenti o concetti qualche riferimento in più a paper di sicuro farà contenta la commissione }
+\label{chap:intro}
 \section{Sicurezza del Firmware nei Dispositivi Medicali}
-
+\label{subsec:Sicurezza_del_Firmware}
 I dispositivi embedded medicali rappresentano ad oggi una categoria particolarmente critica dal punto di
 vista della sicurezza informatica. A differenza di dispositivi IT classici, questi operano in contesti in cui
 un malfunzionamento o una compromissione può tradursi in rischi per la salute dei pazienti o per la loro
@@ -21,6 +20,7 @@ esempio, i sorgenti sono raramente disponibili, e i binari risultanti sono spess
 compilati per architetture non standard e progettati per operare in ambienti con scarse risorse hardware.
 
 \section{Obiettivi della tesi}
+\label{subsec:obiettivi_tesi}
 L’obiettivo del progetto è quello di esplorare strumenti e metodologie per l’analisi di sicurezza di firmware embedded in dispositivi medicali, utilizzando come caso di studio il firmware dell’Holter Walk400h, un monitor cardiaco ambulatoriale rappresentativo della categoria di dispositivi medicali a bassa complessità ma con firmware non banale. 
 A partire dal lavoro di reverse engineering condotto in
 una precedente tesi~\cite{alberici26}, che ha permesso di ricostruire la struttura del bootloader e di
@@ -30,14 +30,13 @@ meccanismo di aggiornamento del firmware, confrontandone al contempo l'efficacia
 in un contesto di firmware bare-metal.
 
 \section{Struttura della tesi}
-
-Il resto della tesi è organizzato come segue. Il Capitolo~2 introduce i concetti teorici alla base della
+\label{subsec:struttura_tesi}
+Il resto della tesi è organizzato come segue. Il \Cref{chap:background} introduce i concetti teorici alla base della
 symbolic execution, le relative sfide e le principali tecniche di mitigazione e presenta gli
-strumenti utilizzati nel lavoro: Ghidra, RetDec, KLEE e angr. Il Capitolo~3 descrive il dispositivo
+strumenti utilizzati nel lavoro: Ghidra, RetDec, KLEE e angr. Il \Cref{chap:Dispostivo_Walk400h} descrive il dispositivo
 Walk400h e il lavoro di reverse engineering del suo bootloader, individuando le funzioni critiche ai fini
-dell'analisi. Il Capitolo~4 illustra la metodologia adottata, articolata nei due approcci esplorati --
-RetDec~+~KLEE e Angr. Il Capitolo~5 presenta i risultati ottenuti con entrambi gli approcci e le
-vulnerabilità identificate. Il Capitolo~6, infine, discute l'efficacia degli strumenti utilizzati, l'impatto di
-sicurezza delle vulnerabilità individuate, propone possibili sviluppi futuri e riassume le conclusioni del lavoro.
+dell'analisi. Il \Cref{chap:metodologia} illustra la metodologia adottata, articolata nei due approcci esplorati --
+RetDec~+~KLEE e Angr. Il \Cref{chap:risultati} presenta i risultati ottenuti con entrambi gli approcci e le
+vulnerabilità identificate. Il \Cref{chap:conclusioni}, infine, discute l'efficacia degli strumenti utilizzati, l'impatto di sicurezza delle vulnerabilità individuate, propone possibili sviluppi futuri e riassume le conclusioni del lavoro.
 
 
